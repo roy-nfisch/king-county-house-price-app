@@ -3,6 +3,7 @@
 import json
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -47,6 +48,30 @@ def test_prediction_returns_a_positive_price(client, house_payload):
     """A real pipeline handles the example, including nullable waterfront."""
     response = client.post("/predict", json=house_payload)
     assert response.json()["predicted_price"] > 0
+
+
+def test_api_price_matches_direct_pipeline_prediction(client, house_payload):
+    """Check response forwarding against the same loaded fitted pipeline."""
+    values = dict(house_payload, zipcode=int(house_payload["zipcode"]))
+    pipeline = client.app.state.prediction_service._pipeline
+    expected = float(pipeline.predict(pd.DataFrame([values]))[0])
+    response = client.post("/predict", json=house_payload)
+    assert response.status_code == 200
+    assert response.json()["predicted_price"] == pytest.approx(
+        expected, rel=1e-12, abs=1e-6
+    )
+
+
+@pytest.mark.parametrize("field,value", [("bedrooms", 10**100), ("sqft_lot", 1e200)])
+def test_oversized_numbers_return_422_before_prediction(
+    client, house_payload, field, value
+):
+    """Reject technically unusable inputs rather than reporting model failure."""
+    house_payload[field] = value
+    with patch.object(PredictionService, "predict") as predict:
+        response = client.post("/predict", json=house_payload)
+    assert response.status_code == 422
+    predict.assert_not_called()
 
 
 @pytest.mark.parametrize("field", ["bedrooms", "zipcode", "view"])

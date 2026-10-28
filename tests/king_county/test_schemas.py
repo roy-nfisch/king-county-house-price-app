@@ -1,10 +1,61 @@
 """Input/output contract checks, including boundaries and explicit null rules."""
 
+import json
+import re
+from pathlib import Path
+
 import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from king_county.schemas import HouseInput, PredictionResult
+from king_county.schemas import MAX_COUNT, MAX_MEASUREMENT, HouseInput, PredictionResult
+
+
+@pytest.mark.parametrize("field", ["bedrooms", "condition", "grade"])
+@pytest.mark.parametrize("offset", [0, 1])
+def test_count_storage_boundary(house_payload, field, offset):
+    """Accept int64's upper endpoint and reject the next integer."""
+    house_payload[field] = MAX_COUNT + offset
+    if offset:
+        with pytest.raises(ValidationError):
+            HouseInput.model_validate(house_payload)
+    else:
+        assert getattr(HouseInput.model_validate(house_payload), field) == MAX_COUNT
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "bathrooms",
+        "sqft_living",
+        "sqft_lot",
+        "floors",
+        "view",
+        "sqft_above",
+        "sqft_living15",
+        "sqft_lot15",
+    ],
+)
+@pytest.mark.parametrize("outside", [False, True])
+def test_measurement_precision_boundary(house_payload, field, outside):
+    """Check the endpoint and the next float above the technical input policy."""
+    value = float(MAX_MEASUREMENT)
+    house_payload[field] = np.nextafter(value, np.inf) if outside else value
+    if field == "sqft_above":
+        house_payload["sqft_living"] = value
+    if outside:
+        with pytest.raises(ValidationError):
+            HouseInput.model_validate(house_payload)
+    else:
+        assert getattr(HouseInput.model_validate(house_payload), field) == value
+
+
+def test_design_request_example_matches_strict_schema():
+    """Keep the copyable design example compatible with the public contract."""
+    document = Path(__file__).resolve().parents[2] / "docs/design.md"
+    example = re.search(r"```json\n(.*?)\n```", document.read_text(), re.S)
+    assert example is not None
+    HouseInput.model_validate(json.loads(example.group(1)))
 
 
 def test_dataset_example_has_exactly_the_raw_input_contract(house_payload):

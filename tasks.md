@@ -68,6 +68,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Smoke-test the real reviewed artifact through TestClient and live Uvicorn on localhost:7002; readiness/docs/prediction succeeded, missing ZIP returned 422, and the temporary server was stopped.
     - [x] Pass 329 tests, Ruff, formatting, package build, installed-package imports, wheel contents, documentation links, protected checksums, and 50-line checks. Fix the non-finite HTTP-input error boundary so invalid numbers return 422 without echoing raw inputs.
     - [x] Reject duplicate raw JSON keys before prediction, including identical/conflicting values and escaped names; cover malformed/empty/non-object bodies and verify prediction is not called.
+    - [x] Address review findings: add schema-owned technical numeric bounds with endpoint/just-outside and HTTP regression tests, correct the strict-integer design example and validate it in tests, and compare the API price against the loaded pipeline's direct prediction. All 355 tests, Ruff, formatting, package build, and diff checks pass locally; PR CI remains pending.
     - [ ] Review before PR and confirm GitHub CI before merge. Keep request traceability, result saving, Docker, and deployment outside this change.
 
 ## To do

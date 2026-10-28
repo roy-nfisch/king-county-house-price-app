@@ -136,7 +136,7 @@ This request example comes from the first CSV record, with the empty `waterfront
   "grade": 7,
   "sqft_above": 1180,
   "yr_built": 1955,
-  "yr_renovated": 0.0,
+  "yr_renovated": 0,
   "zipcode": "98178",
   "lat": 47.5112,
   "long": -122.257,
@@ -154,6 +154,8 @@ If the intended interface must work with fewer details, the alternative is to **
 **HTTP boundary:** `src/api/main.py` creates the app without model-loading import side effects. Its startup lifespan creates one service per worker; routes in `src/api/routes.py` reuse it. `HouseInput` requires all 17 keys, rejects extra/coerced/non-finite values, validates physical coordinate limits, nonnegative counts/areas, binary waterfront flags, int64-safe nonnegative years, five-digit ZIP strings, and area consistency. The ZIP string is converted to the notebook's numeric feature by the service. These technical checks do not guarantee that an unfamiliar house is within the model's learned domain.
 
 **Failure policy:** invalid request data returns 422 before prediction. A dedicated handler returns error types, field locations, and messages without raw input/context objects; this also prevents non-finite inputs from breaking error-response serialization. The model must return one finite positive total price; zero/negative/non-finite or malformed output raises `PredictionError` and returns a controlled 500 response, without clamping or exposing internal pipeline details. `/health` reports that startup loaded the reviewed model, not that its predictions are accurate. Requests and results are not persisted. Request-level traceability, authentication, result saving, and deployment remain deferred; bind the current server to localhost.
+
+**Numeric limits:** `HouseInput` owns the technical bounds. Counts and years are limited to nonnegative int64 storage; measurements are capped at `2**53 - 1`, float64's consecutive-integer precision limit. This conservative application policy prevents oversized requests from reaching pandas as object-valued counts or overflowing degree-two products. It does not establish realistic property limits, learned-domain membership, or guaranteed prediction success. Boundary tests cover each capped field; HTTP regression tests check that the two reported oversized inputs return 422 without calling prediction.
 
 **Notebook parity versus app behaviour:** first compare extracted transformations with fixed notebook examples. The original notebook builds its waterfront reference list before splitting the dataset. In the working notebook, fit the reusable pipeline on training rows only, so its reference locations can be saved and reused at inference. This is an intentional training-boundary change, not a claim of identical predictions or the same 0.844 score. Evaluate and document it separately.
 

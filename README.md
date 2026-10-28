@@ -167,6 +167,8 @@ ZIP codes must be five-digit strings; the service converts them to the model's n
 
 Duplicate JSON keys return **422**, even when their values are identical or their names use equivalent Unicode escapes. Raw-body validation checks this before prediction, since normal dictionary parsing would silently keep only the last occurrence.
 
+Technical input limits also reject oversized numbers with **422** before prediction: counts and years must fit nonnegative int64 (`2**63 - 1` maximum), and measurements are capped at `2**53 - 1`, float64's consecutive-integer precision limit. The measurement cap is a conservative application policy that also keeps degree-two products finite—not a realistic house-size limit or a guarantee of accurate predictions. A model may still reject an otherwise valid request or produce an unusable price.
+
 ### Supply or deliberately replace the model
 
 `src/king_county/artifacts.py` pins the reviewed model version, SHA-256, and default export path. `MODEL_PATH` can point to another location containing **the same approved bytes**; `LOG_LEVEL` controls logging. No `.env` file is loaded automatically, and no environment setting overrides the approved checksum.

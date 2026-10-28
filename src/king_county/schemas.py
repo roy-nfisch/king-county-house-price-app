@@ -4,8 +4,13 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-NonNegative = Annotated[float, Field(ge=0)]
-Count = Annotated[int, Field(ge=0)]
+# Technical input policies, not estimates of realistic house sizes. Keep counts
+# within pandas int64 storage and measurements within float64's consecutive-
+# integer precision range. Squaring these measurements also remains finite.
+MAX_MEASUREMENT = 2**53 - 1
+MAX_COUNT = 2**63 - 1
+NonNegative = Annotated[float, Field(ge=0, le=MAX_MEASUREMENT)]
+Count = Annotated[int, Field(ge=0, le=MAX_COUNT)]
 Year = Annotated[int, Field(ge=0, le=2**63 - 1)]
 
 
