@@ -2,8 +2,12 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from king_county.logging_config import configure_logging
 from king_county.settings import AppSettings
+
+pytestmark = pytest.mark.unit
 
 
 def test_logging_uses_validated_settings():

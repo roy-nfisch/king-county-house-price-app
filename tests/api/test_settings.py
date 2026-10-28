@@ -2,8 +2,12 @@
 
 from pathlib import Path
 
+import pytest
+
 from api.settings import ApiSettings
 from king_county.artifacts import DEFAULT_MODEL_PATH
+
+pytestmark = pytest.mark.unit
 
 
 def test_default_model_path(monkeypatch):

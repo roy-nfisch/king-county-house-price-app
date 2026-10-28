@@ -38,6 +38,7 @@ def traces(caplog):
     ]
 
 
+@pytest.mark.unit
 def test_trace_uses_monotonic_elapsed_time(caplog):
     """Wall-clock changes cannot affect elapsed duration."""
     caplog.set_level(logging.INFO, logger="api.traceability")
@@ -57,6 +58,7 @@ def successful_trace(traced_client, house_payload, caplog):
     return records[0], response
 
 
+@pytest.mark.integration
 def test_trace_contains_only_operational_metadata(successful_trace):
     """Do not include house fields or predicted prices."""
     record, _ = successful_trace
@@ -74,12 +76,14 @@ def test_trace_contains_only_operational_metadata(successful_trace):
     "field,expected",
     [("model_version", MODEL_VERSION), ("outcome", "success"), ("status_code", 200)],
 )
+@pytest.mark.integration
 def test_success_trace_field(successful_trace, field, expected):
     """Report unrelated metadata failures as separate test cases."""
     record, _ = successful_trace
     assert record[field] == expected
 
 
+@pytest.mark.integration
 def test_response_id_matches_generated_trace_id(successful_trace):
     """A server UUID replaces, rather than trusts, an incoming request ID."""
     record, response = successful_trace
@@ -87,12 +91,14 @@ def test_response_id_matches_generated_trace_id(successful_trace):
     assert record["request_id"] != "untrusted-input"
 
 
+@pytest.mark.integration
 def test_trace_timestamp_is_explicitly_utc(successful_trace):
     """The structured timestamp must not depend on the host's timezone."""
     record, _ = successful_trace
     assert datetime.fromisoformat(record["timestamp"]).utcoffset() == timedelta(0)
 
 
+@pytest.mark.integration
 def test_trace_duration_is_nonnegative(successful_trace):
     """A completed request has a nonnegative duration in milliseconds."""
     record, _ = successful_trace
@@ -100,6 +106,7 @@ def test_trace_duration_is_nonnegative(successful_trace):
 
 
 @pytest.mark.parametrize("body", ["{}", '{"bedrooms":1,"bedrooms":2}', "{"])
+@pytest.mark.integration
 def test_rejected_requests_are_traced_before_prediction(traced_client, caplog, body):
     """Validation failures retain a correlation ID and do not call the model."""
     with patch.object(PredictionService, "predict") as predict:
@@ -112,6 +119,7 @@ def test_rejected_requests_are_traced_before_prediction(traced_client, caplog, b
     assert traces(caplog)[0]["request_id"] == response.headers["X-Request-ID"]
 
 
+@pytest.mark.integration
 def test_controlled_prediction_failure_is_traced(traced_client, house_payload, caplog):
     """A handled model failure gets one failed trace and an HTTP correlation ID."""
     with patch.object(
@@ -124,6 +132,7 @@ def test_controlled_prediction_failure_is_traced(traced_client, house_payload, c
     assert traces(caplog)[0]["request_id"] == response.headers["X-Request-ID"]
 
 
+@pytest.mark.integration
 def test_unexpected_failure_is_logged_and_not_hidden(
     traced_client, house_payload, caplog
 ):
@@ -139,6 +148,7 @@ def test_unexpected_failure_is_logged_and_not_hidden(
 
 
 @pytest.mark.parametrize("path", ["/health", "/docs", "/openapi.json"])
+@pytest.mark.integration
 def test_non_prediction_requests_do_not_create_traces(traced_client, caplog, path):
     """Readiness checks and documentation must not flood prediction logs."""
     response = traced_client.get(path)
@@ -146,6 +156,7 @@ def test_non_prediction_requests_do_not_create_traces(traced_client, caplog, pat
     assert "X-Request-ID" not in response.headers
 
 
+@pytest.mark.integration
 def test_concurrent_predictions_keep_separate_request_ids(
     traced_client, house_payload, caplog
 ):
@@ -163,6 +174,7 @@ def test_concurrent_predictions_keep_separate_request_ids(
 
 @pytest.mark.parametrize("error", [asyncio.CancelledError, RuntimeError])
 @pytest.mark.parametrize("headers_started", [False, True])
+@pytest.mark.unit
 def test_interrupted_requests_never_log_success(caplog, error, headers_started):
     """Propagate interruptions and preserve the status actually started, if any."""
     caplog.set_level(logging.INFO, logger="api.traceability")
@@ -204,6 +216,7 @@ def test_interrupted_requests_never_log_success(caplog, error, headers_started):
         ("/api/houses", "/api/houses/predict"),
     ],
 )
+@pytest.mark.integration
 def test_prefixed_predictions_are_traced(
     approved_artifact, house_payload, caplog, root_path, path
 ):

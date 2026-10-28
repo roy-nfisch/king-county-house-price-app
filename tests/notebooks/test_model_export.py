@@ -25,6 +25,8 @@ from king_county import artifacts
 from king_county.cleaning import HouseCleaner
 from king_county.features import HouseFeatureEngineer
 
+pytestmark = pytest.mark.integration
+
 ROOT = Path(__file__).resolve().parents[2]
 
 

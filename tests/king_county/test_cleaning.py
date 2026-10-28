@@ -15,6 +15,7 @@ ABOVE_ONE = np.nextafter(1.0, np.inf)
 MAX_FLOAT = np.finfo(float).max
 
 
+@pytest.mark.unit
 def test_cleaning_matches_notebook_baseline(raw_houses, baseline):
     """Match the frozen original outputs on the retained comparison rows."""
     raw = raw_houses.loc[baseline["output_rows"]]
@@ -30,6 +31,7 @@ def test_cleaning_matches_notebook_baseline(raw_houses, baseline):
     assert "yr_built" not in cleaned and "yr_renovated" not in cleaned
 
 
+@pytest.mark.unit
 def test_cleaning_does_not_mutate_or_drop_rows(raw_houses):
     """Keep the input, row labels, target, and even the training exclusion row."""
     before = raw_houses.copy(deep=True)
@@ -44,6 +46,7 @@ def test_cleaning_does_not_mutate_or_drop_rows(raw_houses):
     assert_frame_equal(cleaned[unchanged_columns], before[unchanged_columns])
 
 
+@pytest.mark.unit
 def test_existing_basement_value_is_recomputed(raw_houses):
     """Do not trust an incorrect supplied basement value."""
     raw_houses["sqft_basement"] = "unknown"
@@ -54,6 +57,7 @@ def test_existing_basement_value_is_recomputed(raw_houses):
     assert raw_houses.loc[1, "sqft_basement"] == "unknown"
 
 
+@pytest.mark.unit
 def test_null_optional_values_follow_notebook_rules(raw_houses):
     """Accept a one-house request with explicit nulls in optional fields."""
     raw = raw_houses.loc[[0]].copy()
@@ -69,6 +73,7 @@ def test_null_optional_values_follow_notebook_rules(raw_houses):
     )
 
 
+@pytest.mark.integration
 def test_cleaner_works_in_sklearn_pipeline(raw_houses):
     """Allow cloning and ordinary pipeline fit/transform without training a model."""
     cleaner = clone(HouseCleaner())
@@ -98,6 +103,7 @@ def test_cleaner_works_in_sklearn_pipeline(raw_houses):
         pytest.param(MAX_FLOAT, MAX_FLOAT, 0.0, id="largest-finite-equal-areas"),
     ],
 )
+@pytest.mark.unit
 def test_valid_area_boundaries(raw_houses, living, above, basement):
     """Accept the implemented area boundaries without imposing an invented cap."""
     raw = raw_houses.loc[[0]].copy()
@@ -123,6 +129,7 @@ def test_valid_area_boundaries(raw_houses, living, above, basement):
         pytest.param(-1.0, -1.0, id="both-negative"),
     ],
 )
+@pytest.mark.unit
 def test_invalid_area_boundaries(raw_houses, method, living, above):
     """Reject values immediately outside either bound in fit and transform."""
     raw = raw_houses.loc[[0]].copy()
@@ -147,6 +154,7 @@ def test_invalid_area_boundaries(raw_houses, method, living, above):
 @pytest.mark.parametrize(
     "value", [None, np.nan, pd.NA], ids=["None", "NaN", "pandas-NA"]
 )
+@pytest.mark.unit
 def test_each_nullable_column_uses_its_fallback(
     raw_houses, column, output_column, expected, value
 ):
@@ -169,6 +177,7 @@ def test_each_nullable_column_uses_its_fallback(
         ("yr_renovated", "last_known_change", 1978),
     ],
 )
+@pytest.mark.unit
 def test_explicit_values_are_preserved(raw_houses, column, output_column, value):
     """Do not treat valid zeros or supplied renovation years as missing data."""
     raw = raw_houses.loc[[0]].copy()
@@ -180,6 +189,7 @@ def test_explicit_values_are_preserved(raw_houses, column, output_column, value)
 
 
 @pytest.mark.parametrize("value", [0, 0.0], ids=["integer-zero", "float-zero"])
+@pytest.mark.unit
 def test_zero_renovation_uses_build_year(raw_houses, value):
     """The notebook's zero sentinel selects construction year, not year zero."""
     raw = raw_houses.loc[[0]].copy()
@@ -190,6 +200,7 @@ def test_zero_renovation_uses_build_year(raw_houses, value):
     assert cleaned.loc[0, "last_known_change"] == raw.loc[0, "yr_built"]
 
 
+@pytest.mark.unit
 def test_empty_table_returns_empty_cleaned_table(raw_houses):
     """A zero-row preprocessing batch stays empty without creating fake houses."""
     raw = raw_houses.iloc[:0].copy()
@@ -201,6 +212,7 @@ def test_empty_table_returns_empty_cleaned_table(raw_houses):
     assert_frame_equal(cleaned, expected, check_dtype=False)
 
 
+@pytest.mark.unit
 def test_nonsequential_duplicate_row_labels_are_preserved(raw_houses):
     """Keep row order and duplicate labels rather than resetting or sorting them."""
     raw = raw_houses.iloc[:3].copy()
@@ -220,6 +232,7 @@ def test_nonsequential_duplicate_row_labels_are_preserved(raw_houses):
     [-(2**63), 2**63 - 1, np.nextafter(float(2**63), 0), float(-(2**63))],
     ids=["minimum-integer", "maximum-integer", "below-upper-float", "lower-float"],
 )
+@pytest.mark.unit
 def test_year_storage_boundaries_are_preserved(raw_houses, column, year):
     """Keep representable years exact, including mixed integer/float inputs."""
     raw = raw_houses.loc[[0]].copy()

@@ -4,6 +4,10 @@ import os
 import subprocess
 import sys
 
+import pytest
+
+pytestmark = pytest.mark.integration
+
 
 def test_installed_package_logs_outside_repository(tmp_path):
     """Import the installed package and exercise settings plus console logging."""

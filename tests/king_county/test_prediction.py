@@ -11,6 +11,8 @@ from king_county.features import HouseFeatureEngineer
 from king_county.prediction import PredictionError, PredictionService
 from king_county.schemas import HouseInput
 
+pytestmark = pytest.mark.integration
+
 
 def test_predictions_reuse_one_loaded_artifact(approved_artifact, house_payload):
     """Repeated calls do not re-read or deserialize the model."""

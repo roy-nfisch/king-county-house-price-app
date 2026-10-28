@@ -10,6 +10,8 @@ from sklearn.dummy import DummyRegressor
 
 from king_county.artifacts import ModelArtifact, ModelLoadError
 
+pytestmark = pytest.mark.integration
+
 
 def test_approved_model_loads_as_a_complete_pipeline(approved_artifact):
     """The verified model includes preprocessing and its fitted reference state."""

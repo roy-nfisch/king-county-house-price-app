@@ -22,6 +22,7 @@ dev = [
     "ipykernel>=7.3.0",
     "nbformat>=5.11.1",
     "pytest>=8,<10",
+    "pytest-xdist>=3.8,<4",
     "ruff>=0.14,<1",
 ]
 
@@ -34,7 +35,13 @@ module-name = ["king_county", "api"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--import-mode=importlib"
+addopts = "--import-mode=importlib --strict-markers"
+markers = [
+    "unit: focused class or function checks without external processes",
+    "integration: component wiring, files, notebooks, subprocesses or containers",
+    "contract: independently pinned public API consumer expectations",
+    "docker: requires a built image and access to the Docker daemon",
+]
 
 [tool.ruff]
 target-version = "py313"
