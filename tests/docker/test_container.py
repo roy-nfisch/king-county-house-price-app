@@ -133,6 +133,19 @@ def container_url(approved_artifact, image):
 
 @pytest.mark.integration
 @pytest.mark.docker
+def test_container_includes_project_license(image):
+    """The shipped runtime must retain the project's complete MIT notice."""
+    script = (
+        "from importlib.metadata import distribution; "
+        "print(distribution('mle-refactoring-project').read_text('licenses/LICENSE'), end='')"
+    )
+    result = docker("run", "--rm", "--entrypoint", "python", image, "-c", script)
+    expected = (Path(__file__).resolve().parents[2] / "LICENSE").read_text()
+    assert result.stdout == expected
+
+
+@pytest.mark.integration
+@pytest.mark.docker
 def test_container_serves_prediction(container_url, house_payload):
     """Check packaging, server startup, model loading and real network I/O."""
     status, body = request_json(container_url + "/predict", house_payload)

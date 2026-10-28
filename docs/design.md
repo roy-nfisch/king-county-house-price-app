@@ -223,7 +223,7 @@ Build reference: [uv's Docker integration guide](https://docs.astral.sh/uv/guide
 
 House CRUD is a separate feature: API routes → a house storage component → database. It should not be added inside `PredictionService`.
 
-When the application code exists, add a short `TODO(stage-2)` at its route-registration boundary for house CRUD and persistence. Track it in [the deferred tasks](../tasks.md#stage-2--deferred). No empty repository classes or database container are needed now. This separation reduces future rework; it does not guarantee zero refactoring.
+The application already has a short `TODO(stage-2)` at its route-registration boundary for house CRUD and persistence. Track it in [the deferred tasks](../tasks.md#stage-2--deferred). No empty repository classes or database container are needed now. This separation reduces future rework; it does not guarantee zero refactoring.
 
 ## 6. Review and delivery
 

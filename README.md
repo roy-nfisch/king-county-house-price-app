@@ -162,6 +162,7 @@ mle-refactoring-project/
 │   ├── workflows/                # Offline registry checks and smoke-check failures
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
+│   ├── final-review.md            # Independent audit, fixes and release caveats
 │   ├── notebook-to-app.md         # Project journey, decisions, checks and limitations
 │   ├── design.md                 # Class responsibilities and planned app
 │   └── notebook-baseline.md      # Original rules and comparison details
@@ -267,7 +268,7 @@ These tests reuse the existing temporary model fixture. The healthy test process
 
 A small `DockerContainer` test helper owns creation and cleanup, including client timeouts and startup failures. Readiness requires Docker's actual health status; failures include both stdout and stderr. Checks also pin Compose's localhost port and read-only model mount with missing-file protection. Helper regression tests run without Docker; real-container and Compose checks require `DOCKER_TEST_IMAGE`. This checks packaging and HTTP wiring, not production model quality or deployment readiness.
 
-The Docker test file has 13 cases: seven helper regressions, three real-container checks (prediction, checksum rejection, timeout cleanup), and three Compose configuration checks. Invalid-request behaviour stays in the existing API tests instead of being repeated in Docker.
+The Docker test file has 14 cases: seven helper regressions, four real-container checks (license notice, prediction, checksum rejection, timeout cleanup), and three Compose configuration checks. Invalid-request behaviour stays in the existing API tests instead of being repeated in Docker.
 
 ### Publish to GitHub Container Registry
 
@@ -282,6 +283,17 @@ Before pushing, an authenticated registry check rejects an existing version tag.
 After pushing, it pulls by registry digest and checks health and prediction with the approved model mounted read-only. HTTP checks have a five-second connection timeout and a 15-second total timeout per request. The run summary records the digest reference. Publishing creates a downloadable image, not a hosted API. If post-push verification fails, the workflow fails but does not automatically delete already-pushed tags. Choose a new version for the next attempt rather than overwriting an existing tag.
 
 ### Run the published image
+
+**Public download is pending.** Final review found that the first image omits
+the project's MIT notice. The packaging fix and regression checks are prepared
+on this branch, but the published `2026.10.29` image is unchanged and stays
+private. Review/merge the fix, publish a new version (for example,
+`2026.10.29.1`), and verify it before changing package visibility. Visibility is
+package-wide: old versions would become public too. Explicitly approve removal
+of the old deficient version, or choose a separate public package containing
+only corrected images. Do not silently delete or overwrite the first version.
+The instructions below describe the current
+private image; anonymous download instructions will follow the corrected release.
 
 You need Docker running, a checkout of this repository with the approved model,
 and a GitHub account that can read the private package. No local Python install
@@ -356,10 +368,12 @@ We log **no house details, predicted prices, or exception text** in these trace 
 
 If processing is interrupted, the outcome is `failed` even if a 200 response had already started. No started response means `status_code` is `null`. Unexpected server errors may return a generic 500 without the request-ID header. See [the design notes](docs/design.md#a-lightweight-audit-not-another-platform) for technical details.
 
-Saving prediction results is still deferred. Authentication, Docker, and deployment remain separate work. Keep this local prototype bound to `127.0.0.1`.
+Saving prediction results, authentication, and deployment remain deferred.
+Docker packaging is implemented. Keep this local prototype bound to `127.0.0.1`.
 
 ## Project notes
 
+- [Final review](docs/final-review.md): independent audit findings, verification, and public-image release caveats.
 - [Notebook-to-app walkthrough](docs/notebook-to-app.md): what we changed, how the objects fit, and what we learned.
 - [Design and diagrams](docs/design.md): responsibilities, notebook mapping, and prediction flow.
 - [Baseline reference](docs/notebook-baseline.md): preserved rules and regression checks.
