@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 import skops.io as sio
+from sklearn.dummy import DummyRegressor
 
 from king_county.artifacts import ModelArtifact, ModelLoadError
 
@@ -27,12 +28,21 @@ def test_missing_artifact_fails_clearly(tmp_path):
         ModelArtifact(tmp_path / "missing.skops").load()
 
 
-@pytest.mark.parametrize("replacement", [b"", b"changed", b"not a model"])
-def test_changed_bytes_are_rejected_before_deserialization(
-    approved_artifact, replacement
-):
+@pytest.mark.parametrize(
+    "damage", ["empty", "changed", "junk", "truncated", "altered", "other-model"]
+)
+def test_changed_bytes_are_rejected_before_deserialization(approved_artifact, damage):
     """Neither type inspection nor the loader sees unapproved model bytes."""
-    approved_artifact.path.write_bytes(replacement)
+    data = approved_artifact.path.read_bytes()
+    replacements = {
+        "empty": b"",
+        "changed": b"changed",
+        "junk": b"not a model",
+        "truncated": data[: len(data) // 2],
+        "altered": bytes([data[0] ^ 1]) + data[1:],
+        "other-model": sio.dumps(DummyRegressor().fit([[0]], [100.0])),
+    }
+    approved_artifact.path.write_bytes(replacements[damage])
     with (
         patch("king_county.artifacts.sio.get_untrusted_types") as inspect_types,
         patch("king_county.artifacts.sio.loads") as loads,

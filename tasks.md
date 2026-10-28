@@ -69,19 +69,26 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Address review findings: add schema-owned technical numeric bounds with endpoint/just-outside and HTTP regression tests, correct the strict-integer design example and validate it in tests, and compare the API price against the loaded pipeline's direct prediction. All 355 tests, Ruff, formatting, package build, and diff checks passed locally and in PR CI.
     - [x] Review and merge PR #6 after passing GitHub CI. Request traceability, result saving, Docker, and deployment were outside that change.
 
-## In progress
-
-- [ ] **T09a — Add minimal prediction traceability.** Log request ID, UTC timestamp, model version, outcome, and duration without full request data. Keep saving prediction results optional and off by default; agree on the proposed JSON Lines format and failure policy in the design before implementing it. Done when logs identify a prediction's model and outcome, and optional saving is either explicitly deferred or has enabled, disabled, and write-failure tests. No audit database or dashboard is required.
+- [x] **T09a — Add minimal prediction traceability.** Done: reviewed and merged in [PR #7](https://github.com/roy-nfisch/mle-refactoring-project/pull/7), with passing push/PR CI. Per-request objects log request ID, UTC timestamp, model version, outcome, status, and duration without house inputs or prices. Result saving remains explicitly deferred.
     - [x] Add per-request `PredictionTrace` and HTTP middleware, keeping logging separate from prediction/model loading.
     - [x] Include a server-owned correlation header on handled responses; log success, input rejection, and failure without inputs, prices, or exception details.
     - [x] Explicitly defer result persistence; no file writer, database, or unused feature flag.
     - [x] Pass 379 local tests, Ruff, formatting, package build, diff checks, and the 50-line function limit. Tests cover UTC/monotonic timing, independent metadata fields, handled/unexpected failures, validation rejection, privacy, correlation, and concurrent requests.
     - [x] Fix review findings: account for URL prefixes and distinguish completion from HTTP status. Regression tests cover cancellation/errors before and after headers, preserving observed status and propagating exceptions.
-    - [ ] Review before committing or opening a PR; no commit or push has been made for this task.
+    - [x] Review, pass CI, and merge PR #7.
+
+## In progress
+
+- [ ] **T10 — Add integration tests.** Check preprocessing → saved artifact → checksum verification → reload → prediction and request → API → response. Done when tests cover valid/invalid data, feature order, no fitting during prediction, and clear failures. Verify that approved bytes load and altered/truncated/wrong files are rejected before deserialisation. Add tests alongside T06–T09 rather than leaving all testing until the end.
+    - [x] Review existing coverage: preprocessing parity, fold isolation, fresh-process export/reload, checksum/type validation, API startup/validation, and traceability already have tests.
+    - [x] Connect the existing notebook-export fixture to the actual verified loader and API; compare three held-out predictions with normal/reversed JSON key order and block fitting or CSV reads during startup/requests.
+    - [x] Check preserved feature order/reference locations, real truncated/altered archives and replacement models, representative invalid HTTP values, and invalid pipeline-output translation through the real service.
+    - [x] Pass 395 local tests, Ruff, formatting, package build, diff checks, and the 50-line function limit. Only the three existing original-notebook pandas warnings remain. No application-code changes, duplicated dataset, or CI job were needed.
+    - [x] Add independent public API contract expectations for request fields/types/nullability, live prediction responses, and safe validation errors. Reuse API/model fixtures and move overlapping checks instead of copying them. All 423 tests, Ruff, formatting, and diff checks pass; the three original-notebook warnings remain.
+    - [ ] Review the contract-test additions before committing. Earlier T10 integration changes are in PR #8; the contract-test additions are not committed.
 
 ## To do
 
-- [ ] **T10 — Add integration tests.** Check preprocessing → saved artifact → checksum verification → reload → prediction and request → API → response. Done when tests cover valid/invalid data, feature order, no fitting during prediction, and clear failures. Verify that approved bytes load and altered/truncated/wrong files are rejected before deserialisation. Add tests alongside T06–T09 rather than leaving all testing until the end.
 - [ ] **T11 — Run the app in Docker.** Package the app and define how its model artifact is supplied. Choose a free host port without changing internal addresses. Use `ubuntu-latest`, not `ubuntu-slim`, for the Docker build and container integration CI job; the lightweight Python checks can stay on slim. Done when a documented command starts the container, health is checked, and an example prediction succeeds. No database is required for Stage 1.
 - [ ] **T11a — Publish the Docker image to a registry.** Choose the registry (GitHub Container Registry is the proposed default) and its visibility. Build and test the image before publishing, using version/commit tags. Publish only through an approved release or manual workflow, not untrusted PRs; give registry-write permission only to the publishing job and keep credentials out of the image and logs. Done when we can pull the published image by digest and run the health and example prediction checks using documented commands. Publishing an image does not deploy the application.
 - [ ] **T12 — Prepare the portfolio explanation.** Update the README and a short notebook-to-app walkthrough. Explain the original workflow, classes, input/output example, tests, Docker commands, observed metrics, and limitations. Answer the course reflection questions: what steps we took, what challenges we faced, and what we would change with more time. Done when another person can follow the steps from a clean checkout. Do not describe R² as percentage accuracy.

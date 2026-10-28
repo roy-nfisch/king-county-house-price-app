@@ -13,15 +13,6 @@ from king_county.artifacts import MODEL_VERSION, ModelArtifact, ModelLoadError
 from king_county.prediction import PredictionError, PredictionService
 
 
-@pytest.fixture
-def client(approved_artifact):
-    """Start/stop the real application with the test's approved tiny model."""
-    with TestClient(
-        create_app(ApiSettings(model_path=approved_artifact.path))
-    ) as client:
-        yield client
-
-
 @pytest.mark.parametrize("endpoint", ["/health", "/docs", "/openapi.json"])
 def test_readiness_and_documentation_are_available(client, endpoint):
     """Documented endpoints are usable after successful model loading."""
@@ -34,20 +25,6 @@ def test_health_reports_the_loaded_model_version(client):
         "status": "ready",
         "model_version": MODEL_VERSION,
     }
-
-
-@pytest.mark.parametrize(
-    "field, expected", [("currency", "USD"), ("model_version", MODEL_VERSION)]
-)
-def test_prediction_response_identity(client, house_payload, field, expected):
-    """Check independent response fields without hiding one behind another."""
-    assert client.post("/predict", json=house_payload).json()[field] == expected
-
-
-def test_prediction_returns_a_positive_price(client, house_payload):
-    """A real pipeline handles the example, including nullable waterfront."""
-    response = client.post("/predict", json=house_payload)
-    assert response.json()["predicted_price"] > 0
 
 
 def test_api_price_matches_direct_pipeline_prediction(client, house_payload):
@@ -94,13 +71,6 @@ def test_non_finite_http_inputs_return_422_not_500(client, house_payload, value)
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 422
-
-
-def test_validation_errors_do_not_echo_input_records(client, house_payload):
-    """Error responses identify the field without returning whole house records."""
-    house_payload["sqft_above"] = house_payload["sqft_living"] + 1
-    errors = client.post("/predict", json=house_payload).json()["detail"]
-    assert all(set(error) == {"type", "loc", "msg"} for error in errors)
 
 
 @pytest.mark.parametrize(
@@ -193,3 +163,42 @@ def test_model_failure_returns_500(client, house_payload):
         PredictionService, "predict", side_effect=PredictionError("Unable to predict.")
     ):
         assert client.post("/predict", json=house_payload).status_code == 500
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("price", 500000),
+        ("bathrooms", "2"),
+        ("bedrooms", True),
+        ("lat", 90.01),
+    ],
+)
+def test_invalid_house_values_never_reach_service(client, house_payload, field, value):
+    """Check representative schema rules at the HTTP boundary, not only in units."""
+    house_payload[field] = value
+    with patch.object(PredictionService, "predict") as predict:
+        response = client.post("/predict", json=house_payload)
+    predict.assert_not_called()
+    assert response.status_code == 422
+
+
+def test_area_above_living_area_never_reaches_service(client, house_payload):
+    """Derive the invalid area from the request rather than example constants."""
+    house_payload["sqft_above"] = house_payload["sqft_living"] + 1
+    with patch.object(PredictionService, "predict") as predict:
+        response = client.post("/predict", json=house_payload)
+    predict.assert_not_called()
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("output", [[float("nan")], []])
+def test_invalid_pipeline_output_becomes_controlled_http_error(
+    client, house_payload, output
+):
+    """Exercise pipeline -> real service validation -> route error translation."""
+    pipeline = client.app.state.prediction_service._pipeline
+    with patch.object(pipeline, "predict", return_value=output):
+        response = client.post("/predict", json=house_payload)
+    assert response.status_code == 500
+    assert response.json() == {"detail": "The model could not produce a valid price."}
