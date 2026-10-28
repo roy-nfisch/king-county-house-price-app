@@ -27,9 +27,7 @@ Status rules: **To do** = not started; **In progress** = active or waiting for r
 
 Keep the original notebook, saved model, and CSV unchanged as reference material. Use the fixed baseline outputs to check that refactoring preserves preprocessing behaviour.
 
-## In progress
-
-- [ ] **T06 — Extract cleaning into a small class.** Rebuild basement area, fill the specified missing values, and derive the construction/renovation year field. Make the training-row exclusion explicit; do not silently drop prediction requests. Done when unit tests check values, row alignment, missing values, and input immutability.
+- [x] **T06 — Extract cleaning into a small class.** Rebuild basement area, fill the specified missing values, and derive the construction/renovation year field. Done: implementation and tests reviewed and merged in [PR #3](https://github.com/roy-nfisch/mle-refactoring-project/pull/3); the training-row exclusion remains outside prediction preprocessing.
     - [x] Add `HouseCleaner` and replace inline cleaning in the working notebook.
     - [x] Keep training-row exclusion outside the cleaner; preserve the original notebook and model.
     - [x] Verify cleaning unit tests, notebook parity, input immutability, and clear validation failures.
@@ -37,12 +35,23 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Separate input checks into `HouseDataValidator(data).validate()`, with direct tests; keep transformations in `HouseCleaner`.
     - [x] Reject non-real measurements and years outside integer storage limits; preserve exact integer years. All 118 tests pass, including regression and boundary checks.
     - [x] Run all working-copy code cells on the full CSV: 21,596 rows, 19 features, 146 waterfront references, no missing prepared values. Extracted cleaning matches the original on all 21,597 input rows. All 118 tests, Ruff, formatting, and the package build pass; original notebook/data/model checksums are unchanged.
-    - [x] Review the T06 changes before opening a PR. Local verification is complete; GitHub CI has not run for these uncommitted changes.
+    - [x] Review and merge PR #3. Push and PR CI passed, including 118 tests, Ruff, formatting, and package build.
+
+## In progress
+
+- [ ] **T07 — Extract feature creation into a fitted class.** Calculate the two distance features and return model columns in a fixed order. Learn waterfront reference locations from training data only for the app version. Done when the formula matches controlled notebook examples and new requests reuse stored references without fitting again.
+    - [x] Add `HouseFeatureEngineer` and `HouseFeatureValidator`; return only the canonical 19 features.
+    - [x] Share the distance calculation in one method; preserve the notebook's distinct latitude corrections and formulas.
+    - [x] Store only training waterfront coordinates; verify that new batches never refit or add references.
+    - [x] Replace inline feature engineering with a reusable cleaning/feature pipeline in the working notebook. Clearly label its full-data fit as baseline comparison only.
+    - [x] Match all 19 columns against original preprocessing on the full 21,596 retained rows; preserve the original notebook, CSV, and saved model.
+    - [x] Pass 187 tests, including held-out-reference isolation, cloning, output order, geographic boundaries, invalid inputs, and empty prediction batches.
+    - [x] Pass local lint, formatting, package build, notebook-format validation, and 50-line function/code-block checks.
+    - [x] Review T07 before opening a PR; GitHub CI has not run for these uncommitted changes. Do not start T08 or claim model quality from this baseline.
 
 ## To do
 
-- [ ] **T07 — Extract feature creation into a fitted class.** Calculate the two distance features and return model columns in a fixed order. Learn waterfront reference locations from training data only for the app version. Done when the formula matches controlled notebook examples and new requests reuse stored references without fitting again.
-- [ ] **T08 — Connect the notebook to the reusable pipeline and export the model.** In the working notebook, import our preprocessing classes and join them with the existing sklearn steps. Keep splitting, training/tuning, evaluation, and saving there; do not create a training service. Split before fitting dataset-dependent features, then save the complete fitted pipeline plus metadata to a new location and calculate its SHA-256 checksum for review. Done when a fresh process can reload it and reproduce predictions without notebook variables or reading the training CSV during a request. Do not overwrite our existing model.
+- [ ] **T08 — Connect preprocessing to notebook modelling and export the model.** Join the reusable preprocessing pipeline with the existing estimator steps. Keep splitting, training/tuning, evaluation, and saving in the notebook; do not create a training service. Split before fitting dataset-dependent features, then save the complete fitted pipeline plus metadata to a new location and calculate its SHA-256 checksum for review. Done when a fresh process can reload it and reproduce predictions without notebook variables or reading the training CSV during a request. Do not overwrite our existing model.
 - [ ] **T09 — Build the prediction API.** Use Pydantic request/response models and a prediction service. Pin the approved artifact's SHA-256 in code; verify it before loading the same bytes once, and fail startup on mismatch. Validate the 17 raw input fields, predict, and return a finite price with its currency and model version. Provide a feature-only dataset example; missing required information must cause a clear validation error, not guessed values. Done when `/predict`, `/health`, and `/docs` work; invalid requests and missing-model startup fail clearly. Add a code TODO for Stage 2 CRUD at the application boundary, without implementing unused database scaffolding.
 - [ ] **T09a — Add minimal prediction traceability.** Log request ID, UTC timestamp, model version, outcome, and duration without full request data. Keep saving prediction results optional and off by default; agree on the proposed JSON Lines format and failure policy in the design before implementing it. Done when logs identify a prediction's model and outcome, and optional saving is either explicitly deferred or has enabled, disabled, and write-failure tests. No audit database or dashboard is required.
 - [ ] **T10 — Add integration tests.** Check preprocessing → saved artifact → checksum verification → reload → prediction and request → API → response. Done when tests cover valid/invalid data, feature order, no fitting during prediction, and clear failures. Verify that approved bytes load and altered/truncated/wrong files are rejected before deserialisation. Add tests alongside T06–T09 rather than leaving all testing until the end.

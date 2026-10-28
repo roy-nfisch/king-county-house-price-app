@@ -2,7 +2,7 @@
 
 We are turning the King County house-price notebook into a simple, object-oriented Python application. The course's core task is to extract data cleaning and feature engineering into a reusable pipeline. Training, evaluation, and model saving stay in the notebook. Our portfolio extension adds a prediction API, tests, and a local Docker run.
 
-**Current scope:** cleaning is extracted into the reusable `HouseCleaner` class and used by the working notebook. Feature engineering is still inline. The prediction API, model verification, and the app's Docker setup are not implemented yet. See [tasks](tasks.md) for progress and [the baseline reference](docs/notebook-baseline.md) for comparisons with the original. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
+**Current scope:** the working notebook now uses `HouseCleaner` and the fitted `HouseFeatureEngineer` in a reusable preprocessing pipeline. It checks the original baseline without training a model. Model integration/export, the prediction API, model verification, and the app's Docker setup are not implemented yet. See [tasks](tasks.md) for progress and [the baseline reference](docs/notebook-baseline.md) for comparisons with the original. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
 
 ## Our project at a glance
 
@@ -62,12 +62,14 @@ mle-refactoring-project/
 │   └── king_county/
 │       ├── __init__.py            # Makes king_county an importable package
 │       ├── cleaning.py            # Copy-first HouseCleaner transformer
-│       ├── validation.py          # HouseDataValidator input checks
+│       ├── features.py            # Fitted distances and 19 ordered model inputs
+│       ├── validation.py          # Cleaning and feature input validators
 │       ├── settings.py            # Pydantic validation for LOG_LEVEL
 │       └── logging_config.py      # Standard Python console logging setup
 ├── tests/
 │   ├── conftest.py                # Shared fixtures from the existing CSV
 │   ├── test_cleaning.py           # Cleaning behaviour and invalid inputs
+│   ├── test_features.py           # Distances, output order and reference isolation
 │   ├── test_validation.py         # Validator checks and input preservation
 │   ├── test_settings.py           # Defaults, allowed levels and invalid settings
 │   ├── test_logging_config.py     # Logging configuration unit test
@@ -95,7 +97,7 @@ mle-refactoring-project/
 └── LICENSE
 ```
 
-`model/` is local and will not appear in a fresh clone. `.venv/`, caches, and `dist/` build outputs are omitted from this tree and ignored by Git. Feature-engineering and prediction modules are not created yet.
+`model/` is local and will not appear in a fresh clone. `.venv/`, caches, and `dist/` build outputs are omitted from this tree and ignored by Git. Prediction modules are not created yet.
 
 ## Setup
 
@@ -188,9 +190,11 @@ uv build
 
 Ruff currently checks the new package, tests, and `pyproject.toml`, not the original notebook or the separate bonus solution. CI runs the checks and Python package build on `ubuntu-slim` for pushes, pull requests, or a manual run. It uses the existing Python 3.13 version rule and a locked dependency install; no API keys or model files are needed, and it does not train or deploy a model. The slim runner has a 15-minute job limit. Future Docker build/container checks will use a separate `ubuntu-latest` job; registry publishing is tracked separately in [T11a](tasks.md#to-do) and is not implemented yet.
 
-The working notebook uses `HouseCleaner().fit_transform(raw_data)`. It recalculates basement area, fills the specified missing values, and combines construction/renovation years. It returns a copy, keeps row labels, and never drops houses. Its fixed rules do not learn from the dataset; `fit` validates the input for pipeline compatibility. The known training-row exclusion stays outside the cleaner.
+The working notebook runs a sklearn pipeline with two objects. `HouseCleaner` recalculates basement area, fills the specified missing values, and combines construction/renovation years. It returns a copy, keeps row labels, and never drops houses. Its fixed rules do not learn from the dataset; `fit` validates the input for pipeline compatibility. The known training-row exclusion stays outside the cleaner.
 
 The cleaner delegates input checks to a separate object: `HouseDataValidator(raw_data).validate()`. The validator checks the table, real numeric types, finite values, area relationships, and safe integer storage for years, then returns the numeric cleaning columns. The validator checks; the cleaner transforms.
+
+`HouseFeatureEngineer.fit(cleaned_training_houses)` remembers only the training waterfront coordinates. `transform(cleaned_new_houses)` reuses them to calculate distances and return the 19 ordered features, excluding targets and IDs. `HouseFeatureValidator` checks the cleaned inputs. Both distances share one calculation method while keeping the notebook's different latitude corrections. The working notebook deliberately fits on all retained rows for baseline comparison only; model evaluation must split first and fit on training rows, which is the next step.
 
 `AppSettings` reads `LOG_LEVEL` from the environment; the default is `INFO`. Allowed values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. An invalid value raises a Pydantic validation error. Use logging explicitly at startup; importing the package does not configure global logging:
 

@@ -113,3 +113,53 @@ class HouseDataValidator:
             fits_int64 = years.map(lambda year: -(2**63) <= int(year) < 2**63)
             if not fits_int64.all():
                 raise ValueError(f"Cleaning column '{column}' must fit int64 storage.")
+
+
+class HouseFeatureValidator:
+    """Check a cleaned table before geographic feature creation.
+
+    This validates only inputs needed by the feature transformer. It is not
+    the future API contract and does not fill values or learn reference points.
+    """
+
+    def __init__(self, data: pd.DataFrame, columns: tuple[str, ...]) -> None:
+        """Store the cleaned table and required column order; return None."""
+        self.data = data
+        self.columns = columns
+
+    def validate(self) -> pd.DataFrame:
+        """Return a checked copy in the required order, or raise on invalid data.
+
+        Returns:
+            Numeric feature inputs with original row labels and dtypes.
+
+        Raises:
+            TypeError: If the input is not a DataFrame.
+            ValueError: For missing/duplicate columns, non-finite measurements,
+                non-real types, or coordinates outside geographic limits.
+        """
+        self._check_columns()
+        selected = self.data.loc[:, list(self.columns)].copy()
+        for column in self.columns:
+            if not is_any_real_numeric_dtype(selected[column]):
+                raise ValueError(
+                    f"Feature column '{column}' must contain real numbers."
+                )
+        if not np.isfinite(selected.to_numpy(dtype=float, na_value=np.nan)).all():
+            raise ValueError("Feature columns must contain finite, non-null values.")
+        for column, limit in (("lat", 90), ("long", 180)):
+            if not selected[column].between(-limit, limit).all():
+                raise ValueError(
+                    f"Feature column '{column}' must be within +/-{limit}."
+                )
+        return selected
+
+    def _check_columns(self) -> None:
+        """Check table shape and names; return None or raise a clear error."""
+        if not isinstance(self.data, pd.DataFrame):
+            raise TypeError("Feature data must be a pandas DataFrame.")
+        if not self.data.columns.is_unique:
+            raise ValueError("Feature data requires unique column names.")
+        missing = set(self.columns) - set(self.data.columns)
+        if missing:
+            raise ValueError(f"Missing feature columns: {', '.join(sorted(missing))}")

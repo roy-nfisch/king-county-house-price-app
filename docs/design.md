@@ -43,6 +43,7 @@ Use **composition**: each class owns one job and receives the components it need
 | Component | Its job | What it must not do |
 |---|---|---|
 | `HouseDataValidator` | Hold the input table and run its named checks through `validate()`. Return numeric cleaning columns or raise a clear error. | Fill missing values, remove rows, or apply cleaning rules. |
+| `HouseFeatureValidator` | Check cleaned feature inputs, finite numeric values, and latitude/longitude limits. | Calculate features, learn references, or replace the future API contract. |
 | `HouseCleaner` | Apply the stated cleaning rules to a copy of the input table. Use sklearn's transformer interface. | Train a model or silently remove prediction rows. |
 | `HouseFeatureEngineer` | Learn and retain waterfront reference locations in `fit`; create distances and ordered features in `transform`. | Learn new references from prediction requests or use sale price as an input. |
 | `PredictionService` | Verify the pinned model checksum before loading the trusted fitted pipeline once; turn validated house details into a prediction. | Refit preprocessing, retrain, or save house records. |
@@ -69,7 +70,7 @@ This is the familiar application shape: **validated request → service → vali
 
 ### Training in the notebook: build and save what prediction will reuse
 
-The planned training notebook will import `HouseCleaner` and `HouseFeatureEngineer`. Currently, the working copy imports only `HouseCleaner` and keeps feature engineering inline. Data splitting, model training, tuning, evaluation, prediction for error analysis, and model saving stay in the notebook. The application will load the exported pipeline and predict; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
+The working copy imports `HouseCleaner` and `HouseFeatureEngineer` and joins them in a preprocessing pipeline. It currently fits all retained rows only to compare with the original full-data baseline. T08 will split first and connect these steps to the estimator. Data splitting, model training, tuning, evaluation, prediction for error analysis, and model saving stay in the notebook. The application will load the exported pipeline and predict; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
 
 ```mermaid
 flowchart LR
