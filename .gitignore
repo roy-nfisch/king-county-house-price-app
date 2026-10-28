@@ -171,3 +171,6 @@ Thumbs.db
 
 # Model files
 model/
+
+# Git Artifacts
+*.patch
