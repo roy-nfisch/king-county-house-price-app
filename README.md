@@ -77,7 +77,7 @@ uv run --locked pytest tests/
 uv build
 ```
 
-Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; shared fixtures stay at the test root. The same CI command discovers all three folders.
+Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. The same CI command discovers all three folders.
 
 CI runs lint, formatting, tests, and the package build on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, deploy, or need API keys or a pre-existing model artifact.
 
@@ -92,6 +92,10 @@ CI runs lint, formatting, tests, and the package build on pushes and pull reques
 | Invalid house JSON or unusable model output → HTTP error | Validation and failure handling work across the API/service boundary. |
 
 These tests reuse the supplied CSV and temporary artifacts. Only the test export's checksum is approved in memory for that test; production approval constants are unchanged. The checks establish that the parts work together, **not** that a model is accurate on future house sales.
+
+### API contract tests
+
+`tests/api/test_contract.py` pins the public agreement: the 17 required request fields, their JSON types and nullability, the prediction response fields/types, and the safe validation-error format. Expectations are written independently of the application schemas so an accidental breaking change fails CI. Intentional API changes require reviewing these expectations, not automatically regenerating them. These checks protect API clients; they do not measure prediction accuracy or replace the existing boundary tests. API tests share the real app/client fixture in `tests/api/conftest.py` and reuse the temporary approved model.
 
 ## Repository layout
 
@@ -119,7 +123,12 @@ mle-refactoring-project/
 ├── tests/
 │   ├── conftest.py               # Shared fixtures from the existing CSV
 │   ├── king_county/              # Tests matching the Python package
-│   ├── api/                      # Startup, HTTP and API settings checks
+│   ├── api/                      # Shared client, API contracts, HTTP and settings
+│   │   ├── conftest.py           # Shared API client with a temporary approved model
+│   │   ├── test_contract.py      # Public request, response and error contracts
+│   │   ├── test_routes.py        # Startup, prediction and HTTP failure handling
+│   │   ├── test_settings.py      # API configuration and environment checks
+│   │   └── test_traceability.py  # Request IDs, trace metadata and privacy
 │   ├── notebooks/                # Regression, training boundaries and export/reload
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/

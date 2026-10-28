@@ -84,7 +84,8 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Connect the existing notebook-export fixture to the actual verified loader and API; compare three held-out predictions with normal/reversed JSON key order and block fitting or CSV reads during startup/requests.
     - [x] Check preserved feature order/reference locations, real truncated/altered archives and replacement models, representative invalid HTTP values, and invalid pipeline-output translation through the real service.
     - [x] Pass 395 local tests, Ruff, formatting, package build, diff checks, and the 50-line function limit. Only the three existing original-notebook pandas warnings remain. No application-code changes, duplicated dataset, or CI job were needed.
-    - [ ] Review before committing or opening a PR. Nothing committed or pushed for this task.
+    - [x] Add independent public API contract expectations for request fields/types/nullability, live prediction responses, and safe validation errors. Reuse API/model fixtures and move overlapping checks instead of copying them. All 423 tests, Ruff, formatting, and diff checks pass; the three original-notebook warnings remain.
+    - [ ] Review the contract-test additions before committing. Earlier T10 integration changes are in PR #8; the contract-test additions are not committed.
 
 ## To do
 

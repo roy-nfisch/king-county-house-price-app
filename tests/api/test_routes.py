@@ -13,15 +13,6 @@ from king_county.artifacts import MODEL_VERSION, ModelArtifact, ModelLoadError
 from king_county.prediction import PredictionError, PredictionService
 
 
-@pytest.fixture
-def client(approved_artifact):
-    """Start/stop the real application with the test's approved tiny model."""
-    with TestClient(
-        create_app(ApiSettings(model_path=approved_artifact.path))
-    ) as client:
-        yield client
-
-
 @pytest.mark.parametrize("endpoint", ["/health", "/docs", "/openapi.json"])
 def test_readiness_and_documentation_are_available(client, endpoint):
     """Documented endpoints are usable after successful model loading."""
@@ -34,20 +25,6 @@ def test_health_reports_the_loaded_model_version(client):
         "status": "ready",
         "model_version": MODEL_VERSION,
     }
-
-
-@pytest.mark.parametrize(
-    "field, expected", [("currency", "USD"), ("model_version", MODEL_VERSION)]
-)
-def test_prediction_response_identity(client, house_payload, field, expected):
-    """Check independent response fields without hiding one behind another."""
-    assert client.post("/predict", json=house_payload).json()[field] == expected
-
-
-def test_prediction_returns_a_positive_price(client, house_payload):
-    """A real pipeline handles the example, including nullable waterfront."""
-    response = client.post("/predict", json=house_payload)
-    assert response.json()["predicted_price"] > 0
 
 
 def test_api_price_matches_direct_pipeline_prediction(client, house_payload):
@@ -94,13 +71,6 @@ def test_non_finite_http_inputs_return_422_not_500(client, house_payload, value)
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 422
-
-
-def test_validation_errors_do_not_echo_input_records(client, house_payload):
-    """Error responses identify the field without returning whole house records."""
-    house_payload["sqft_above"] = house_payload["sqft_living"] + 1
-    errors = client.post("/predict", json=house_payload).json()["detail"]
-    assert all(set(error) == {"type", "loc", "msg"} for error in errors)
 
 
 @pytest.mark.parametrize(
