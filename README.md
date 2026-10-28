@@ -15,7 +15,7 @@ This is a portfolio project developed during the neue fische MLE course. It buil
 - **Regression tests:** controlled examples check that the refactor preserves the original preprocessing results.
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 
-**Still planned:** request-level traceability, Docker, and deployment. The API currently runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
+**Still planned:** Docker and deployment. The API currently runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
 
 ## The flow
 
@@ -92,7 +92,8 @@ mle-refactoring-project/
 │   ├── main.py                   # App factory and one-time startup loading
 │   ├── request_validation.py     # Reject duplicate JSON keys before prediction
 │   ├── routes.py                 # Predict, readiness and error responses
-│   └── settings.py               # Model path and logging configuration
+│   ├── settings.py               # Model path and logging configuration
+│   └── traceability.py           # Request identity, timing and metadata logging
 ├── src/king_county/
 │   ├── __init__.py
 │   ├── artifacts.py              # Code-pinned checksum and verified loader
@@ -175,7 +176,34 @@ Technical input limits also reject oversized numbers with **422** before predict
 
 The model is ignored, so a fresh clone intentionally cannot start the API until an approved artifact is supplied. To create a replacement, run the notebook, review its evaluation/export, then deliberately update `MODEL_VERSION` and `EXPECTED_MODEL_SHA256` in code before launching. A re-export may have a different checksum even with identical predictions. Never calculate and accept a new expected checksum automatically at startup.
 
-The API does not save requests or prediction results. Request IDs, result persistence, authentication, Docker, and deployment remain separate work. Keep this local prototype bound to `127.0.0.1`.
+### Prediction traceability
+
+Traceability helps us answer: **“What happened to this prediction request?”** Each call to `/predict` gets a unique ID and a short record in the server terminal—even when the input is rejected.
+
+| Recorded field | What it tells us |
+|---|---|
+| `request_id` | Which request we are looking at. |
+| `timestamp` | When it started, in UTC. |
+| `model_version` | Which loaded model handled the request. |
+| `outcome` | Did it succeed, reject invalid input, or fail? |
+| `status_code` | Which HTTP status started the response, such as 200 or 422. |
+| `duration_ms` | How long the request took, in milliseconds. |
+
+**Example:** someone reports a failed prediction. We take the `X-Request-ID` from their response headers and search the server logs for the same ID. This tells us which model was used, what happened, and how long it took. It does **not** tell us whether the predicted price was accurate.
+
+To see the response headers, add `-i` to the example request:
+
+```bash
+curl -i -X POST http://127.0.0.1:7002/predict \
+  -H 'Content-Type: application/json' \
+  --data-binary @examples/house.json
+```
+
+We log **no house details, predicted prices, or exception text** in these trace records. The app writes them to standard logging, not a dedicated file or database; your terminal or hosting platform may retain them. Keep `LOG_LEVEL=INFO` to see them. Health checks and documentation visits do not create prediction records.
+
+If processing is interrupted, the outcome is `failed` even if a 200 response had already started. No started response means `status_code` is `null`. Unexpected server errors may return a generic 500 without the request-ID header. See [the design notes](docs/design.md#a-lightweight-audit-not-another-platform) for technical details.
+
+Saving prediction results is still deferred. Authentication, Docker, and deployment remain separate work. Keep this local prototype bound to `127.0.0.1`.
 
 ## Project notes
 
