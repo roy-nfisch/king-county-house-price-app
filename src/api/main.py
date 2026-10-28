@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from api.errors import invalid_request
 from api.routes import router
 from api.settings import ApiSettings
+from api.traceability import PredictionTraceMiddleware
 from king_county.artifacts import ModelArtifact
 from king_county.logging_config import configure_logging
 from king_county.prediction import PredictionService
@@ -42,6 +43,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         title="King County House Price API", version="0.1.0", lifespan=lifespan
     )
     app.add_exception_handler(RequestValidationError, invalid_request)
+    app.add_middleware(PredictionTraceMiddleware)
     app.include_router(router)
     # TODO(stage-2): Register separate house CRUD routes if persistence is added.
     return app
