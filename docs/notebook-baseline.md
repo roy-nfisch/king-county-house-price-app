@@ -1,4 +1,4 @@
-# Notebook baseline (T05)
+# Notebook baseline
 
 Before changing the code's structure, we need a reference for its behaviour. This baseline answers: **did our refactor change the prepared data?** It does not prove that every original rule is a good production rule.
 
@@ -6,8 +6,8 @@ Before changing the code's structure, we need a reference for its behaviour. Thi
 
 | File | Purpose |
 |---|---|
-| `King-County.ipynb` | Original course notebook; not edited by T05. Its committed execution outputs are currently cleared. |
-| `King-County-refactored.ipynb` | A 10-cell working copy using the cleaner and feature object in a preprocessing pipeline. No EDA or model training. |
+| `King-County.ipynb` | Original course notebook; preserved unchanged. Its committed execution outputs are currently cleared. |
+| `King-County-refactored.ipynb` | A 24-cell working copy: baseline comparison, then separate training, evaluation, export, and fresh-process reload. No copied EDA. |
 | `src/king_county/cleaning.py` | Reusable sklearn-compatible cleaner; fixed rules, no row removal or learned values. |
 | `src/king_county/features.py` | Fitted waterfront locations, shared distance calculation, and ordered model features. |
 | `src/king_county/validation.py` | Separate input validators for cleaning and feature creation; neither changes supplied data. |
@@ -20,9 +20,9 @@ From the project root:
 uv run --locked pytest tests/notebooks/test_notebook_baseline.py
 ```
 
-Open the working notebook with the project's `.venv` kernel and run it from the repository root. It processes the full CSV through the reusable preprocessing pipeline. Waterfront distances use array operations per reference rather than the original nested per-house loop. It does not write any model file.
+Open the working notebook with the project's `.venv` kernel and run it from the repository root. Its first section checks the full CSV baseline; later sections train and evaluate a separate model and export it to a new ignored directory. Waterfront distances use array operations per reference rather than the original nested per-house loop. The original model is never overwritten.
 
-Verification: all working-copy code cells ran against the full CSV in Python and produced **21,596 rows, 19 features, 146 waterfront reference houses, and no missing prepared values**. All 19 prepared columns also match the original preprocessing on the full retained dataset within the comparison tolerances below. Both controlled notebook snapshots match. No model was trained or loaded.
+Baseline verification: the preprocessing section ran against the full CSV and produced **21,596 rows, 19 features, 146 waterfront reference houses, and no missing prepared values**. All 19 prepared columns also match the original preprocessing on the full retained dataset within the comparison tolerances below. Both controlled notebook snapshots match. These regression tests do not train or load a model; the separate model evaluation below does.
 
 ## The reference rules
 
@@ -71,11 +71,11 @@ The centre and waterfront paths share `_distance_km()`. Their latitude correctio
 
 `HouseFeatureValidator` requires the cleaned numeric inputs, finite values, and physical coordinate ranges (latitude +/-90, longitude +/-180). Missing columns and fitting without any waterfront house fail clearly; an empty transform batch is allowed after a successful fit. Tests cover those boundaries, input/reference preservation, feature order, pipeline cloning, and a held-out waterfront house whose distance must not become zero through self-reference.
 
-For baseline parity, this notebook deliberately fits on all retained rows. For actual model evaluation, fit after the train/test split and inside each cross-validation fold. The feature object already supports that boundary; wiring it to model training and exporting its learned state belongs to T08. Do not claim the original R² for this changed training setup without evaluating it.
+For baseline parity, the first section deliberately fits on all retained rows. The separate model pipeline fits only after the train/test split and inside each cross-validation fold. It does not reuse the baseline object. This intentionally changes the original training boundary; the new score must be measured separately.
 
-## Training settings recorded for T08
+## Original notebook training settings
 
-These remain notebook responsibilities; T05 regression tests do not run them:
+These remain notebook responsibilities; preprocessing regression tests do not run them:
 
 | Setting | Original notebook |
 |---|---|
@@ -84,14 +84,43 @@ These remain notebook responsibilities; T05 regression tests do not run them:
 | Final pipeline | Degree-2 polynomial features (`include_bias=False`), `StandardScaler`, then target-scaled `ElasticNet`. |
 | Tuning | Five-fold `GridSearchCV`, scoring `r2`; alpha `[0.01, 0.1, 1]`, L1 ratio `[0.2, 0.5, 0.8]`. |
 | ElasticNet | `max_iter=5000`, `tol=1e-4`, `precompute=True`. |
-| Earlier saved run | Adjusted R² `0.43`, `0.48`, `0.75`; final ordinary test R² `0.844`, winning alpha `0.01` / L1 ratio `0.2`. These were recorded during an earlier review, not reproduced by T05 or currently visible in the cleared outputs. |
+| Earlier saved run | Adjusted R² `0.43`, `0.48`, `0.75`; final ordinary test R² `0.844`, winning alpha `0.01` / L1 ratio `0.2`. These were recorded during an earlier review, not reproduced by the preprocessing baseline checks or currently visible in the cleared outputs. |
 | Existing artifact | Local `model/model.bin`, SHA-256 `2ba5c24e79ec5563ef40420870a22ae2c8d6300a2afa097c05ea7bf3493359de`; do not overwrite it. |
 
 ## Intentional changes stay separate
 
-- Later, fit waterfront references inside training, including within validation folds. Evaluate this change separately rather than promise the original score.
+- Waterfront references now fit inside training, including validation folds. The measured model results below evaluate that change separately from original-baseline parity.
 - Replacing the fixed row exclusion needs an agreed rule and separate tests. Never silently remove prediction rows.
 - Faster distance calculations must match controlled outputs before replacing the loop.
-- T08 will connect notebook modelling to our reusable classes. The app loads the exported pipeline, not a training service.
+- The working notebook connects modelling to our reusable classes. The future app loads the exported pipeline, not a training service.
+
+## Model training and export
+
+The notebook now splits the 17 raw inputs before fitting. Its separate complete pipeline is **cleaning → fitted geographic features → degree-2 polynomial features → StandardScaler → target-scaled ElasticNet**. The target is total sale price in USD. The original 9-candidate, 5-fold grid remains; the intentional change is fitting waterfront references separately inside each fold.
+
+Verified local run on **28 October 2026**:
+
+| Measurement | Result |
+|---|---:|
+| Training / held-out rows | 15,117 / 6,479 |
+| Training waterfront references | 105 |
+| Best alpha / L1 ratio | 0.01 / 0.2 |
+| Mean training cross-validation R² | 0.8279 |
+| Held-out R² | 0.8447 |
+| Held-out MAE | $94,808 |
+| Held-out RMSE | $143,443 |
+| Training-mean baseline MAE | $231,438 |
+
+R² is not percentage accuracy. The shuffled row split can place repeated properties in both sets; these results do not establish quality on future sales or unseen properties. Do not tune using the test score or describe regression parity as model-quality evidence.
+
+After reviewing the metrics, run the export cells. Each run creates a new timestamped directory under ignored `model/refactored/` with:
+
+- `pipeline.skops`: the entire fitted pipeline, including training reference coordinates.
+- `metadata.json`: model version/checksum, raw/prepared names, data checksum, split/grid settings, metrics, and dependency versions.
+- `reload-example.json`: three held-out feature-only records and their expected predictions; this remains local with the bundle.
+
+Exclusive file/directory creation prevents overwriting an existing export. A fresh subprocess runs from a temporary directory, reads only those files, verifies the expected artifact checksum, permits only `HouseCleaner` and `HouseFeatureEngineer` as custom types, and checks predictions within `rtol=1e-10`, `atol=1e-6` dollars. It needs the installed package and compatible dependencies, not notebook variables or the training CSV.
+
+Tests in `tests/notebooks/test_model_export.py` execute the same tagged notebook cells with a tiny two-fold fit. They verify train/fold reference boundaries, metadata, serialization, inference without fit/CSV access, checksum rejection, and overwrite prevention. These test scores are not portfolio metrics; CI does not run the full grid. Metadata is a record for review, not a trusted API checksum source. Pinning the approved checksum and adding startup failure handling belong to the planned prediction API.
 
 See [the design](design.md) and [tasks](../tasks.md).
