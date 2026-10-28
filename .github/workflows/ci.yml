@@ -28,7 +28,7 @@ jobs:
         run: uv run --locked ruff check .
       - name: Check formatting
         run: uv run --locked ruff format --check .
-      - name: Run tests
-        run: uv run --locked pytest
+      - name: Run all test folders
+        run: uv run --locked pytest tests/
       - name: Build package
         run: uv build

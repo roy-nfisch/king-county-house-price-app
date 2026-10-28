@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def select_preprocessing_cells(notebook, notebook_name, baseline):

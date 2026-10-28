@@ -68,13 +68,15 @@ mle-refactoring-project/
 │       └── logging_config.py      # Standard Python console logging setup
 ├── tests/
 │   ├── conftest.py                # Shared fixtures from the existing CSV
-│   ├── test_cleaning.py           # Cleaning behaviour and invalid inputs
-│   ├── test_features.py           # Distances, output order and reference isolation
-│   ├── test_validation.py         # Validator checks and input preservation
-│   ├── test_settings.py           # Defaults, allowed levels and invalid settings
-│   ├── test_logging_config.py     # Logging configuration unit test
-│   ├── test_package.py            # Installed imports and real console logging
-│   ├── test_notebook_baseline.py  # Original/working preprocessing parity
+│   ├── king_county/              # Mirrors src/king_county
+│   │   ├── test_cleaning.py      # Cleaning behaviour and invalid inputs
+│   │   ├── test_features.py      # Distances, output order and reference isolation
+│   │   ├── test_validation.py    # Validator checks and input preservation
+│   │   ├── test_settings.py      # Defaults, allowed levels and invalid settings
+│   │   ├── test_logging_config.py # Logging configuration unit test
+│   │   └── test_package.py       # Installed imports and real console logging
+│   ├── notebooks/
+│   │   └── test_notebook_baseline.py # Original/working preprocessing parity
 │   └── fixtures/
 │       └── notebook_baseline.json # Fixed derived values, not duplicate CSV data
 ├── docs/
@@ -178,13 +180,15 @@ Then open [King-County.ipynb](King-County.ipynb) and select the Python environme
 
 ## Development checks
 
+Tests mirror the source packages: `src/king_county/` has its tests in `tests/king_county/`. When we add `src/api/`, its tests will go in `tests/api/`. Notebook regression checks live separately in `tests/notebooks/`. Shared fixtures stay in `tests/conftest.py` and `tests/fixtures/`; package-specific fixtures can live in that package's test folder. Pytest discovers these folders recursively, so CI will also run future API tests without a new job. No empty API package or extra `__init__.py` files are needed.
+
 Run these from the project root. `uv sync --locked` installs the package and development dependencies using `uv.lock`; do not add `src/` to `PYTHONPATH`.
 
 ```bash
 uv sync --locked
 uv run --locked ruff check .
 uv run --locked ruff format --check .
-uv run --locked pytest
+uv run --locked pytest tests/
 uv build
 ```
 

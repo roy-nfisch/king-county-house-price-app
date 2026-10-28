@@ -12,12 +12,12 @@ Before changing the code's structure, we need a reference for its behaviour. Thi
 | `src/king_county/features.py` | Fitted waterfront locations, shared distance calculation, and ordered model features. |
 | `src/king_county/validation.py` | Separate input validators for cleaning and feature creation; neither changes supplied data. |
 | `tests/fixtures/notebook_baseline.json` | Fixed expected outputs and feature order; no duplicate raw dataset. |
-| `tests/test_notebook_baseline.py` | Runs selected trusted preprocessing cells against controlled CSV rows. No training or model loading. |
+| `tests/notebooks/test_notebook_baseline.py` | Runs selected trusted preprocessing cells against controlled CSV rows. No training or model loading. |
 
 From the project root:
 
 ```bash
-uv run --locked pytest tests/test_notebook_baseline.py
+uv run --locked pytest tests/notebooks/test_notebook_baseline.py
 ```
 
 Open the working notebook with the project's `.venv` kernel and run it from the repository root. It processes the full CSV through the reusable preprocessing pipeline. Waterfront distances use array operations per reference rather than the original nested per-house loop. It does not write any model file.
