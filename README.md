@@ -2,7 +2,7 @@
 
 We are turning the King County house-price notebook into a simple, object-oriented Python application. The course's core task is to extract data cleaning and feature engineering into a reusable pipeline. Training, evaluation, and model saving stay in the notebook. Our portfolio extension adds a prediction API, tests, and a local Docker run.
 
-**Status: foundation in progress (T04).** The design is approved. The installable Python package, validated logging settings, foundation tests, and CI workflow are in place; the first GitHub CI run is still pending. Cleaning/feature classes, the prediction API, model verification, and the app's Docker setup are not implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
+**Status: foundation complete (T04).** The design is approved. The installable Python package, validated logging settings, foundation tests, and CI workflow are in place; GitHub checks passed on `ubuntu-slim`. Next is T05: capture the notebook baseline. Cleaning/feature classes, the prediction API, model verification, and the app's Docker setup are not implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
 
 ## Our project at a glance
 

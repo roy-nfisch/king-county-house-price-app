@@ -1,6 +1,6 @@
 # King County: notebook to application
 
-**Status: design approved; T04 foundation in progress.** This document describes the agreed application design, not a completed prediction application. Training, evaluation, and model saving stay in the notebook.
+**Status: design approved; T04 foundation complete.** This document describes the agreed application design, not a completed prediction application. Training, evaluation, and model saving stay in the notebook.
 
 ## 1. What the notebook currently does
 

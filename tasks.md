@@ -12,14 +12,16 @@ Status rules: **To do** = not started; **In progress** = active or waiting for r
 - [x] **T02 — Inspect the saved model safely.** Inspect `model/model.bin` without loading Python objects. Done: its skops archive describes a fitted pipeline with 19 prepared input features. Polynomial expansion and scaling are included; the earlier cleaning and geographic feature creation are not.
 - [x] **T03 — Agree on the design.** Done: we reviewed and approved the notebook/application responsibilities, prediction inputs, and documented differences. Training, evaluation, and model saving stay in the notebook.
 
-## In progress
-
-- [ ] **T04 — Create the project foundation and CI.** Package the Python code, add Pydantic, standard Python logging, pytest, and the selected code checks. Use the existing Python version and lockfile. Done when installation works from a clean checkout and PR checks run automatically. No automatic cloud deployment yet.
+- [x] **T04 — Create the project foundation and CI.** Done: the package, validated settings, logging, tests, Ruff, and locked CI are in place. Local and isolated-source checks passed on Python 3.13.17, and the [GitHub PR checks passed on ubuntu-slim](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40689614650). No automatic cloud deployment is configured.
     - [x] Add the installable `king_county` package, Pydantic settings, and standard logging setup.
     - [x] Add pytest, Ruff, and a locked GitHub Actions workflow on `ubuntu-slim` for pushes and PRs.
     - [x] Run the local tests, lint, and formatting checks on Python 3.13.17.
     - [x] Verify a non-editable installation, tests, lint, formatting, and package build from an isolated source copy.
-    - [ ] Confirm the first GitHub Actions run after pushing; no PR has been opened for T04 yet.
+    - [x] Confirm GitHub Actions passed for [PR #2](https://github.com/roy-nfisch/mle-refactoring-project/pull/2).
+
+## In progress
+
+No task currently in progress. T05 is next.
 
 ## To do
 
