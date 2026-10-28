@@ -33,3 +33,23 @@ logging.getLogger("king_county").debug("Hidden debug message")
     assert "INFO king_county Foundation ready" in result.stderr
     assert "Hidden debug message" not in result.stderr
     assert result.stdout == ""
+
+
+def test_api_package_imports_outside_repository(tmp_path):
+    """The installed API package needs neither the checkout nor a model to import."""
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from api.main import create_app; print(create_app.__module__)",
+        ],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=True,
+    )
+    assert result.stdout.strip() == "api.main"

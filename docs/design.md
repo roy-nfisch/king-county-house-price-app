@@ -32,9 +32,9 @@ sqft_basement, zipcode, lat, long, sqft_living15,
 sqft_lot15, last_known_change, center_distance, water_distance
 ```
 
-It does not contain the earlier cleaning or waterfront reference-building steps. Loading this file alone will not turn raw house details into a prediction. Runtime loading and prediction have not yet been tested by the agent.
+It does not contain the earlier cleaning or waterfront reference-building steps. Loading this legacy file alone will not turn raw house details into a prediction. It remains a reference; the API uses the complete refactored pipeline exported by the working notebook instead.
 
-`model/` is ignored by Git. A fresh clone therefore cannot depend on our local file. We need documented notebook training and artifact-export steps before claiming the Docker application is reproducible.
+`model/` is ignored by Git. A fresh clone must supply the reviewed export, or train/export and deliberately approve a replacement in code. The README documents this requirement. A missing or changed model stops API startup; Docker packaging remains separate work.
 
 ## 2. The proposed pattern: small objects working together
 
@@ -46,7 +46,8 @@ Use **composition**: each class owns one job and receives the components it need
 | `HouseFeatureValidator` | Check cleaned feature inputs, finite numeric values, and latitude/longitude limits. | Calculate features, learn references, or replace the future API contract. |
 | `HouseCleaner` | Apply the stated cleaning rules to a copy of the input table. Use sklearn's transformer interface. | Train a model or silently remove prediction rows. |
 | `HouseFeatureEngineer` | Learn and retain waterfront reference locations in `fit`; create distances and ordered features in `transform`. | Learn new references from prediction requests or use sale price as an input. |
-| `PredictionService` | Verify the pinned model checksum before loading the trusted fitted pipeline once; turn validated house details into a prediction. | Refit preprocessing, retrain, or save house records. |
+| `ModelArtifact` | Read the configured model once, check its code-pinned SHA-256 and custom-type allowlist, and return the fitted complete pipeline. | Trust a supplied metadata checksum or uploaded model. |
+| `PredictionService` | Load through `ModelArtifact` at construction and reuse the pipeline for validated house inputs. Return a validated finite positive price. | Refit preprocessing, retrain, or save house records. |
 | Pydantic models | Define house inputs, application settings, and prediction responses with explicit validation. | Learn data patterns or establish that a prediction is accurate. |
 | FastAPI routes | Pass requests to the service and return responses/errors; optionally save a validated prediction result before returning it. | Duplicate cleaning or model logic. |
 
@@ -62,7 +63,7 @@ Cell numbers below count **all cells, including Markdown**, starting at 1. `In[.
 | Notebook training — stays in the notebook | **Data Preparation**, cell 29; **Modeling**, cells 79–83; **Regularization and Hyperparameter Tuning**, cells 118–121; **Save the Model**, cell 132. | Import our preprocessing classes, then apply training-row rules, split, fit/tune, evaluate, and save the complete pipeline. Do not turn these steps into an application service. |
 | `PredictionService` | **Regularization and Hyperparameter Tuning**, cell 124 (`In[73]`) calls `elastic.predict(X_test_poly)`. | Reuse that prediction operation with the complete saved preprocessing pipeline. Startup loading and HTTP requests are new application code, not existing notebook steps. |
 | Pydantic models | No corresponding notebook implementation. **Business Understanding**, cell 5, describes dataset fields. | New validation around incoming house JSON, settings, and outgoing results. |
-| FastAPI routes | No corresponding notebook implementation. | Planned prediction API boundary; the course's optional CRUD example is not included in this repository. |
+| FastAPI routes | No corresponding notebook implementation. | Implemented prediction API boundary; the course's optional CRUD example is not included in this repository. |
 
 The notebook creates waterfront references before splitting. Moving reference fitting inside the training pipeline is a deliberate change, explained in section 3; the table maps responsibilities, not an identical execution order.
 
@@ -70,7 +71,7 @@ This is the familiar application shape: **validated request → service → vali
 
 ### Training in the notebook: build and save what prediction will reuse
 
-The working copy imports `HouseCleaner` and `HouseFeatureEngineer` and first compares their preprocessing with the original full-data baseline. A separate complete model pipeline then splits raw inputs before fitting; grid search clones cleaning, features, polynomial expansion, scaling, and the estimator for every training fold. Data splitting, training, tuning, evaluation, and export stay in the notebook. Each export creates a new ignored bundle with the fitted pipeline, metadata, and a held-out reload example. A fresh process verifies the checksum, applies an explicit custom-type allowlist, and reproduces predictions without reading the CSV. The future application will load an approved artifact; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
+The working copy imports `HouseCleaner` and `HouseFeatureEngineer` and first compares their preprocessing with the original full-data baseline. A separate complete model pipeline then splits raw inputs before fitting; grid search clones cleaning, features, polynomial expansion, scaling, and the estimator for every training fold. Data splitting, training, tuning, evaluation, and export stay in the notebook. Each export creates a new ignored bundle with the fitted pipeline, metadata, and a held-out reload example. A fresh process verifies the checksum, applies an explicit custom-type allowlist, and reproduces predictions without reading the CSV. The application loads an approved artifact; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
 
 ```mermaid
 flowchart LR
@@ -120,7 +121,7 @@ flowchart TD
 
 That is **17 raw input fields → 19 prepared model features**. Basement area and three derived features are calculated; the two raw year fields are replaced by one. Input validation must reject inconsistent areas, such as above-ground area exceeding total living area.
 
-This proposed request example comes from the first CSV record, with the empty `waterfront` value represented as `null`. No sale price, ID, date, or precomputed features are sent:
+This request example comes from the first CSV record, with the empty `waterfront` value represented as `null`. No sale price, ID, date, or precomputed features are sent:
 
 ```json
 {
@@ -135,7 +136,7 @@ This proposed request example comes from the first CSV record, with the empty `w
   "grade": 7,
   "sqft_above": 1180,
   "yr_built": 1955,
-  "yr_renovated": 0.0,
+  "yr_renovated": 0,
   "zipcode": "98178",
   "lat": 47.5112,
   "long": -122.257,
@@ -150,6 +151,12 @@ If the intended interface must work with fewer details, the alternative is to **
 
 ## 3. Decisions that must stay visible
 
+**HTTP boundary:** `src/api/main.py` creates the app without model-loading import side effects. Its startup lifespan creates one service per worker; routes in `src/api/routes.py` reuse it. `HouseInput` requires all 17 keys, rejects extra/coerced/non-finite values, validates physical coordinate limits, nonnegative counts/areas, binary waterfront flags, int64-safe nonnegative years, five-digit ZIP strings, and area consistency. The ZIP string is converted to the notebook's numeric feature by the service. These technical checks do not guarantee that an unfamiliar house is within the model's learned domain.
+
+**Failure policy:** invalid request data returns 422 before prediction. A dedicated handler returns error types, field locations, and messages without raw input/context objects; this also prevents non-finite inputs from breaking error-response serialization. The model must return one finite positive total price; zero/negative/non-finite or malformed output raises `PredictionError` and returns a controlled 500 response, without clamping or exposing internal pipeline details. `/health` reports that startup loaded the reviewed model, not that its predictions are accurate. Requests and results are not persisted. Request-level traceability, authentication, result saving, and deployment remain deferred; bind the current server to localhost.
+
+**Numeric limits:** `HouseInput` owns the technical bounds. Counts and years are limited to nonnegative int64 storage; measurements are capped at `2**53 - 1`, float64's consecutive-integer precision limit. This conservative application policy prevents oversized requests from reaching pandas as object-valued counts or overflowing degree-two products. It does not establish realistic property limits, learned-domain membership, or guaranteed prediction success. Boundary tests cover each capped field; HTTP regression tests check that the two reported oversized inputs return 422 without calling prediction.
+
 **Notebook parity versus app behaviour:** first compare extracted transformations with fixed notebook examples. The original notebook builds its waterfront reference list before splitting the dataset. In the working notebook, fit the reusable pipeline on training rows only, so its reference locations can be saved and reused at inference. This is an intentional training-boundary change, not a claim of identical predictions or the same 0.844 score. Evaluate and document it separately.
 
 **Row removal:** the notebook drops a fixed row label. That is tied to this CSV, not a general validation rule. Record the known exclusion for the training baseline, then agree on an explicit rule. Prediction requests must produce a result or a clear validation error, not silently disappear.
@@ -162,15 +169,15 @@ If the intended interface must work with fewer details, the alternative is to **
 
 ### Model integrity before loading
 
-Keep an `EXPECTED_MODEL_SHA256` constant in the prediction module, reviewed in Git alongside the model version. At startup, `PredictionService` reads the model bytes, calculates their SHA-256 checksum, and compares it with that constant **before deserialising anything**. A mismatch stops startup with a clear error. Load the same verified bytes rather than reopening the path after checking it.
+`src/king_county/artifacts.py` pins `MODEL_VERSION` and `EXPECTED_MODEL_SHA256` in code. At startup, `PredictionService` delegates to `ModelArtifact`, which reads model bytes once, verifies their SHA-256 **before deserialising anything**, rejects unapproved custom types, and loads those same bytes. A mismatch or incompatible pipeline stops startup. `MODEL_PATH` may relocate the artifact but cannot change its approved identity; the loader never reads a sidecar checksum.
 
-The current notebook artifact, `model/model.bin`, has this verified checksum:
+The original reference artifact, `model/model.bin`, has this checksum (not the API's approved model):
 
 ```text
 2ba5c24e79ec5563ef40420870a22ae2c8d6300a2afa097c05ea7bf3493359de
 ```
 
-This value identifies our existing artifact, not the future complete pipeline. When we deliberately export a replacement from the notebook, calculate its checksum, review the model and its evaluation, and update the pinned constant in the same release. Do not automatically replace the expected checksum at startup or accept one supplied with an uploaded file.
+This value identifies the legacy artifact, not the API's complete pipeline. When we deliberately export a replacement from the notebook, calculate its checksum, review the model and its evaluation, and update the pinned constant in the same release. Do not automatically replace the expected checksum at startup or accept one supplied with an uploaded file.
 
 This is an **integrity check**: it detects a changed, corrupted, or wrong artifact relative to the approved code. It is not a digital signature, a model-quality check, or permission to load an untrusted model. Anyone able to change both the artifact and the trusted code can replace both; code review and deployment access still matter. Keep skops' type checks; do not automatically trust every reported type. No model-upload endpoint is planned.
 
@@ -178,7 +185,7 @@ This is an **integrity check**: it detects a changed, corrupted, or wrong artifa
 
 - Unit tests cover cleaning values, missing values, distance examples, feature order, and preservation of row labels and input data.
 - Integration tests cover artifact round-trip prediction and the API using a small controlled fitted model. Test startup failure for a missing/incompatible artifact and rejection of invalid requests.
-- Check that the approved artifact passes checksum verification, while modified, truncated, or wrong files are rejected before the model loader is called. These checks are planned, not implemented yet.
+- The approved artifact loads, while altered/truncated/wrong bytes are rejected before skops inspects or deserialises them. Tests also check missing-model startup failure, one-time loading, no CSV/refit during prediction, and controlled HTTP errors.
 - Compare tables with pandas testing helpers and floats with a justified tolerance. Full model quality belongs in a repeatable evaluation, not an assertion that every prediction equals its true sale price.
 - Keep small deterministic checks in PR CI. Do not run expensive grid searches or depend on cloud credentials for ordinary unit tests.
 - Use standard Python logging for startup, training stages, and failures. Do not log complete requests or secrets. A healthcheck passing is not evidence of prediction quality.
