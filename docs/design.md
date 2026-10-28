@@ -70,7 +70,7 @@ This is the familiar application shape: **validated request → service → vali
 
 ### Training in the notebook: build and save what prediction will reuse
 
-The working copy imports `HouseCleaner` and `HouseFeatureEngineer` and joins them in a preprocessing pipeline. It currently fits all retained rows only to compare with the original full-data baseline. T08 will split first and connect these steps to the estimator. Data splitting, model training, tuning, evaluation, prediction for error analysis, and model saving stay in the notebook. The application will load the exported pipeline and predict; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
+The working copy imports `HouseCleaner` and `HouseFeatureEngineer` and first compares their preprocessing with the original full-data baseline. A separate complete model pipeline then splits raw inputs before fitting; grid search clones cleaning, features, polynomial expansion, scaling, and the estimator for every training fold. Data splitting, training, tuning, evaluation, and export stay in the notebook. Each export creates a new ignored bundle with the fitted pipeline, metadata, and a held-out reload example. A fresh process verifies the checksum, applies an explicit custom-type allowlist, and reproduces predictions without reading the CSV. The future application will load an approved artifact; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
 
 ```mermaid
 flowchart LR
@@ -196,7 +196,7 @@ For the local prototype, use a configured writable file location and test the en
 
 House CRUD is a separate feature: API routes → a house storage component → database. It should not be added inside `PredictionService`.
 
-When the application code exists, add a short `TODO(stage-2)` at its route-registration boundary for house CRUD and persistence. Track it in [T14](../tasks.md#stage-2--deferred). No empty repository classes or database container are needed now. This separation reduces future rework; it does not guarantee zero refactoring.
+When the application code exists, add a short `TODO(stage-2)` at its route-registration boundary for house CRUD and persistence. Track it in [the deferred tasks](../tasks.md#stage-2--deferred). No empty repository classes or database container are needed now. This separation reduces future rework; it does not guarantee zero refactoring.
 
 ## 6. Review and delivery
 

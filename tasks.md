@@ -37,9 +37,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Run all working-copy code cells on the full CSV: 21,596 rows, 19 features, 146 waterfront references, no missing prepared values. Extracted cleaning matches the original on all 21,597 input rows. All 118 tests, Ruff, formatting, and the package build pass; original notebook/data/model checksums are unchanged.
     - [x] Review and merge PR #3. Push and PR CI passed, including 118 tests, Ruff, formatting, and package build.
 
-## In progress
-
-- [ ] **T07 — Extract feature creation into a fitted class.** Calculate the two distance features and return model columns in a fixed order. Learn waterfront reference locations from training data only for the app version. Done when the formula matches controlled notebook examples and new requests reuse stored references without fitting again.
+- [x] **T07 — Extract feature creation into a fitted class.** Done: the fitted feature object, baseline parity, and reference isolation checks were reviewed and merged in [PR #4](https://github.com/roy-nfisch/mle-refactoring-project/pull/4). Push and PR CI passed.
     - [x] Add `HouseFeatureEngineer` and `HouseFeatureValidator`; return only the canonical 19 features.
     - [x] Share the distance calculation in one method; preserve the notebook's distinct latitude corrections and formulas.
     - [x] Store only training waterfront coordinates; verify that new batches never refit or add references.
@@ -47,11 +45,22 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Match all 19 columns against original preprocessing on the full 21,596 retained rows; preserve the original notebook, CSV, and saved model.
     - [x] Pass 187 tests, including held-out-reference isolation, cloning, output order, geographic boundaries, invalid inputs, and empty prediction batches.
     - [x] Pass local lint, formatting, package build, notebook-format validation, and 50-line function/code-block checks.
-    - [x] Review T07 before opening a PR; GitHub CI has not run for these uncommitted changes. Do not start T08 or claim model quality from this baseline.
+    - [x] Review and merge PR #4. Push and PR CI passed. Preprocessing parity is separate from model-quality evaluation.
+
+## In progress
+
+- [ ] **T08 — Connect preprocessing to notebook modelling and export the model.** Join the reusable preprocessing pipeline with the existing estimator steps. Keep splitting, training/tuning, evaluation, and saving in the notebook; do not create a training service. Split before fitting dataset-dependent features, then save the complete fitted pipeline plus metadata to a new location and calculate its SHA-256 checksum for review. Done when a fresh process can reload it and reproduce predictions without notebook variables or reading the training CSV during a request. Do not overwrite our existing model.
+    - [x] Build a separate complete pipeline and split the 17 raw inputs before fitting. Keep full-data preprocessing only for the labelled original-baseline comparison.
+    - [x] Run the original 9-candidate / 5-fold training search, preserving ElasticNet and scaling settings while isolating waterfront references inside each fold.
+    - [x] Evaluate on 6,479 held-out rows: R² 0.8447, MAE $94,808, RMSE $143,443. Record limitations, measured scores, and a training-mean baseline separately from regression checks.
+    - [x] Export a new ignored timestamped skops bundle with metadata, checksum, versions, input contract, and held-out reload example; do not overwrite the original artifact.
+    - [x] Verify fresh-process reload and prediction without the CSV; add small integration tests for fold isolation, metadata, explicit trusted types, checksum rejection, no refit, and overwrite prevention.
+    - [x] Pass 195 local tests, Ruff, formatting, package build, notebook validation, local documentation links, original-artifact checksums, and 50-line checks. Only the unchanged original notebook emits pandas deprecation warnings.
+    - [x] Review the implementation and scope before opening a PR. Training stays in the notebook; API work is not included. The implementation is committed and pushed.
+    - [x] Confirm PR CI passes, review the changes, and merge before marking T08 done.
 
 ## To do
 
-- [ ] **T08 — Connect preprocessing to notebook modelling and export the model.** Join the reusable preprocessing pipeline with the existing estimator steps. Keep splitting, training/tuning, evaluation, and saving in the notebook; do not create a training service. Split before fitting dataset-dependent features, then save the complete fitted pipeline plus metadata to a new location and calculate its SHA-256 checksum for review. Done when a fresh process can reload it and reproduce predictions without notebook variables or reading the training CSV during a request. Do not overwrite our existing model.
 - [ ] **T09 — Build the prediction API.** Use Pydantic request/response models and a prediction service. Pin the approved artifact's SHA-256 in code; verify it before loading the same bytes once, and fail startup on mismatch. Validate the 17 raw input fields, predict, and return a finite price with its currency and model version. Provide a feature-only dataset example; missing required information must cause a clear validation error, not guessed values. Done when `/predict`, `/health`, and `/docs` work; invalid requests and missing-model startup fail clearly. Add a code TODO for Stage 2 CRUD at the application boundary, without implementing unused database scaffolding.
 - [ ] **T09a — Add minimal prediction traceability.** Log request ID, UTC timestamp, model version, outcome, and duration without full request data. Keep saving prediction results optional and off by default; agree on the proposed JSON Lines format and failure policy in the design before implementing it. Done when logs identify a prediction's model and outcome, and optional saving is either explicitly deferred or has enabled, disabled, and write-failure tests. No audit database or dashboard is required.
 - [ ] **T10 — Add integration tests.** Check preprocessing → saved artifact → checksum verification → reload → prediction and request → API → response. Done when tests cover valid/invalid data, feature order, no fitting during prediction, and clear failures. Verify that approved bytes load and altered/truncated/wrong files are rejected before deserialisation. Add tests alongside T06–T09 rather than leaving all testing until the end.
