@@ -5,6 +5,8 @@ from pydantic import ValidationError
 
 from king_county.settings import AppSettings
 
+pytestmark = pytest.mark.unit
+
 
 def test_default_log_level(monkeypatch):
     """Use INFO when no environment override is supplied."""

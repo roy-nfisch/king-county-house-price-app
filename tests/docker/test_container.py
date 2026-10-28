@@ -131,6 +131,8 @@ def container_url(approved_artifact, image):
         yield app.url
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 def test_container_serves_prediction(container_url, house_payload):
     """Check packaging, server startup, model loading and real network I/O."""
     status, body = request_json(container_url + "/predict", house_payload)
@@ -138,6 +140,8 @@ def test_container_serves_prediction(container_url, house_payload):
     assert body["predicted_price"] > 0
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 def test_normal_container_rejects_unapproved_model(approved_artifact, image):
     """The normal entrypoint must not trust our test model or its own digest."""
     with DockerContainer(image, approved_artifact.path) as app:
@@ -151,6 +155,7 @@ def test_normal_container_rejects_unapproved_model(approved_artifact, image):
     [subprocess.TimeoutExpired("start", 90), subprocess.CalledProcessError(3, "start")],
     ids=["timeout", "startup-failure"],
 )
+@pytest.mark.unit
 def test_start_failure_still_removes_owned_container(monkeypatch, error):
     """Failures and timeouts must not leave the server-side container alive."""
     calls = []
@@ -169,6 +174,7 @@ def test_start_failure_still_removes_owned_container(monkeypatch, error):
 
 
 @pytest.mark.parametrize("failure", ["exited", "unhealthy", "missing", "timeout"])
+@pytest.mark.unit
 def test_health_failure_reports_both_log_streams(monkeypatch, failure):
     """Missing/broken health checks and early exits must fail with diagnostics."""
     state = {"Running": failure != "exited"}
@@ -190,6 +196,7 @@ def test_health_failure_reports_both_log_streams(monkeypatch, failure):
         app.wait_healthy(timeout=0 if failure == "timeout" else 1)
 
 
+@pytest.mark.unit
 def test_docker_health_is_required_before_ready(monkeypatch):
     """Wait through starting until Docker itself reports healthy."""
     states = iter(["starting", "healthy"])
@@ -203,6 +210,8 @@ def test_docker_health_is_required_before_ready(monkeypatch):
     assert DockerContainer("unused", Path("unused.skops")).wait_healthy() is None
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 def test_real_timeout_does_not_leave_a_container(approved_artifact, image):
     """Reproduce a client timeout with real Docker and verify server cleanup."""
     app = DockerContainer(
@@ -233,6 +242,8 @@ def compose_api(image, monkeypatch):
     return json.loads(result.stdout)["services"]["api"]
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 def test_compose_publishes_only_localhost(compose_api):
     """A refactor must not accidentally expose this unauthenticated API publicly."""
     (port,) = compose_api["ports"]
@@ -243,6 +254,8 @@ def test_compose_publishes_only_localhost(compose_api):
     )
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 def test_compose_model_mount_is_read_only(compose_api):
     """Keep the model at the configured container path and prevent writes."""
     (mount,) = compose_api["volumes"]
@@ -255,6 +268,8 @@ def test_compose_model_mount_is_read_only(compose_api):
     assert mount["read_only"] is True
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 def test_compose_does_not_create_missing_model(image, tmp_path, monkeypatch):
     """Test missing-file behaviour, not version-specific config serialization."""
     missing = tmp_path / "missing-model.skops"

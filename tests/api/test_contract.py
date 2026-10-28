@@ -11,6 +11,8 @@ import pytest
 
 from king_county.artifacts import MODEL_VERSION
 
+pytestmark = pytest.mark.contract
+
 # Do not derive this agreement from HouseInput: both could then change unnoticed.
 REQUEST_TYPES = {
     "bedrooms": {"integer"},

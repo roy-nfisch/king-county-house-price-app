@@ -1,4 +1,4 @@
-"""Input/output contract checks, including boundaries and explicit null rules."""
+"""Unit checks of schema validation, boundaries, and explicit null rules."""
 
 import json
 import re
@@ -9,6 +9,8 @@ import pytest
 from pydantic import ValidationError
 
 from king_county.schemas import MAX_COUNT, MAX_MEASUREMENT, HouseInput, PredictionResult
+
+pytestmark = pytest.mark.unit
 
 
 @pytest.mark.parametrize("field", ["bedrooms", "condition", "grade"])

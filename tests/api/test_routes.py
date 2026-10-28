@@ -12,6 +12,8 @@ from api.settings import ApiSettings
 from king_county.artifacts import MODEL_VERSION, ModelArtifact, ModelLoadError
 from king_county.prediction import PredictionError, PredictionService
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.parametrize("endpoint", ["/health", "/docs", "/openapi.json"])
 def test_readiness_and_documentation_are_available(client, endpoint):

@@ -7,6 +7,8 @@ from pandas.testing import assert_frame_equal
 
 from king_county.validation import HouseDataValidator
 
+pytestmark = pytest.mark.unit
+
 
 def test_validate_returns_numeric_columns_without_changing_input(raw_houses):
     """The object validates data, but never performs cleaning or removes rows."""

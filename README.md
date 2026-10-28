@@ -78,9 +78,25 @@ uv run --locked pytest tests/
 uv build
 ```
 
+### Test categories and CI stages
+
+Tests keep their source-mirroring folders. Pytest markers map each test to one purpose:
+
+| Category | Tests mapped here | Run locally |
+|---|---|---|
+| Unit | Cleaning, features, validation, Pydantic schemas, settings, logging, isolated trace/middleware checks, and mocked Docker-helper regressions | `uv run --locked pytest -m unit` |
+| Integration | Scikit-learn pipeline wiring, artifact loading, prediction service with a fitted artifact, installed-package subprocesses, notebooks, API routes/traces, real containers, and Compose configuration | `uv run --locked pytest -m "integration and not docker" -n 2 --dist loadfile` |
+| Contract | Independently pinned public API request, response, and error expectations in `tests/api/test_contract.py` | `uv run --locked pytest -m contract` |
+
+Whole files use `pytestmark = pytest.mark.unit` (or `integration`/`contract`); mixed files mark individual tests with `@pytest.mark.unit`, for example. Every test must have exactly one category; collection fails for missing/overlapping categories or unknown marker names. `docker` is an additional runtime label, not a fourth category: real Docker/Compose tests are marked both `integration` and `docker`. Mocked Docker-helper checks remain unit tests.
+
+CI runs lint/format/build first. Unit, non-Docker integration, and contract jobs then run on `ubuntu-slim`, alongside the Docker integration job on `ubuntu-26.04`. The explicit Docker runner label selects Ubuntu 26.04 directly instead of following future OS migrations of `ubuntu-latest`; it does not freeze runner tool updates. Selections do not overlap, so each test runs once across these test jobs. All jobs must pass before merging; GitHub branch-protection settings are managed separately.
+
+The development-only `pytest-xdist` plugin runs non-Docker integration tests with two worker processes. `--dist loadfile` keeps each file on one worker, so the notebook's module-scoped export fixture is not repeated across workers. Unit and contract cases remain serial within their own jobs: worker startup did not improve the measured unit run, and the contract checks share one file. Docker cases also remain serial within their job to keep resource use predictable. Use `-n 0` to debug an integration test without workers. Worker counts are explicit rather than automatically consuming every available CPU. See the [pytest-xdist distribution guide](https://pytest-xdist.readthedocs.io/en/stable/distribution.html).
+
 Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. Container smoke tests live in `tests/docker/` and skip unless `DOCKER_TEST_IMAGE` names a built image.
 
-CI runs lint, formatting, tests, and the package build on pushes and pull requests. A separate `ubuntu-latest` job builds and smoke-tests the Docker image; Python-only checks stay on `ubuntu-slim`. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, publish, deploy, or need API keys or a pre-existing model artifact.
+CI runs these stages on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, publish, deploy, or need API keys or a pre-existing model artifact.
 
 ### What the integration tests connect
 
@@ -234,6 +250,8 @@ To run container tests locally:
 docker build -t king-county-api:test .
 DOCKER_TEST_IMAGE=king-county-api:test uv run --locked pytest tests/docker/
 ```
+
+To run only the Docker-enabled integration stage used by CI, replace the last command with `DOCKER_TEST_IMAGE=king-county-api:test uv run --locked pytest -m "integration and docker"`. This excludes the helper unit tests, which already run in the unit stage.
 
 These tests reuse the existing temporary model fixture. The healthy test process explicitly approves that fixture's digest **in memory through a test-only Python startup command**; it does not change the image, production code, or normal entrypoint. Another test verifies that the normal command rejects this unapproved model.
 

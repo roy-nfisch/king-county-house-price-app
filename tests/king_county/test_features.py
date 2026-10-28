@@ -16,6 +16,7 @@ from king_county.cleaning import HouseCleaner
 from king_county.features import HouseFeatureEngineer
 
 
+@pytest.mark.unit
 def test_features_match_frozen_notebook_values(cleaned_houses, baseline):
     """Match original distances and every feature name in the same order."""
     engineer = HouseFeatureEngineer()
@@ -34,6 +35,7 @@ def test_features_match_frozen_notebook_values(cleaned_houses, baseline):
     assert_array_equal(engineer.get_feature_names_out(), baseline["feature_names"])
 
 
+@pytest.mark.unit
 def test_center_point_has_zero_distance(cleaned_houses):
     """The fixed centre maps to zero, not to the separate cosine latitude."""
     query = cleaned_houses.loc[[0]].copy()
@@ -44,6 +46,7 @@ def test_center_point_has_zero_distance(cleaned_houses):
     assert features.loc[0, "center_distance"] == 0
 
 
+@pytest.mark.unit
 def test_held_out_waterfront_does_not_become_its_own_reference(cleaned_houses):
     """A new waterfront house must measure distance to training references."""
     training = cleaned_houses.loc[[0, 49]].copy()
@@ -63,6 +66,7 @@ def test_held_out_waterfront_does_not_become_its_own_reference(cleaned_houses):
     assert len(engineer.waterfront_locations_) == 1
 
 
+@pytest.mark.unit
 def test_query_batch_does_not_change_reference_state(cleaned_houses):
     """Predictions are independent of other houses in the incoming batch."""
     engineer = HouseFeatureEngineer().fit(cleaned_houses.loc[[0, 49]])
@@ -75,6 +79,7 @@ def test_query_batch_does_not_change_reference_state(cleaned_houses):
     assert_array_equal(engineer.waterfront_locations_, before)
 
 
+@pytest.mark.unit
 def test_fit_copies_references_and_transform_preserves_input(cleaned_houses):
     """Changing the source table later must not change the stored locations."""
     engineer = HouseFeatureEngineer()
@@ -90,6 +95,7 @@ def test_fit_copies_references_and_transform_preserves_input(cleaned_houses):
     assert references.shape == (2, 2)
 
 
+@pytest.mark.unit
 def test_output_excludes_targets_ids_and_overwrites_supplied_distances(cleaned_houses):
     """Only the canonical model inputs leave the transformer."""
     expected = HouseFeatureEngineer().fit_transform(cleaned_houses)
@@ -107,6 +113,7 @@ def test_output_excludes_targets_ids_and_overwrites_supplied_distances(cleaned_h
     assert_frame_equal(actual, expected)
 
 
+@pytest.mark.unit
 def test_feature_order_does_not_depend_on_input_order(cleaned_houses):
     """Keep canonical columns and preserve duplicate, nonsequential row labels."""
     raw = cleaned_houses.iloc[:3].copy()
@@ -120,6 +127,7 @@ def test_feature_order_does_not_depend_on_input_order(cleaned_houses):
     assert features.index.tolist() == [42, 7, 42]
 
 
+@pytest.mark.unit
 def test_empty_query_returns_empty_ordered_features(cleaned_houses):
     """An empty prediction batch must not create fake houses or lose columns."""
     engineer = HouseFeatureEngineer().fit(cleaned_houses)
@@ -131,6 +139,7 @@ def test_empty_query_returns_empty_ordered_features(cleaned_houses):
     assert features.index.equals(cleaned_houses.iloc[:0].index)
 
 
+@pytest.mark.integration
 def test_preprocessing_pipeline_works_with_raw_house_fields(raw_houses, baseline):
     """Combine the two objects without exposing price or ID to a model."""
     pipeline = Pipeline(
@@ -148,6 +157,7 @@ def test_preprocessing_pipeline_works_with_raw_house_fields(raw_houses, baseline
     assert_frame_equal(actual, expected)
 
 
+@pytest.mark.unit
 def test_cloning_discards_learned_reference_state(cleaned_houses):
     """Cross-validation clones must learn their own references, not inherit them."""
     fitted = HouseFeatureEngineer().fit(cleaned_houses)
@@ -165,6 +175,7 @@ def test_cloning_discards_learned_reference_state(cleaned_houses):
     ],
     ids=["transform", "feature-names"],
 )
+@pytest.mark.unit
 def test_transform_requires_a_successful_fit(cleaned_houses, operation):
     """Do not guess reference locations when fit() has never succeeded."""
     engineer = HouseFeatureEngineer()
@@ -174,6 +185,7 @@ def test_transform_requires_a_successful_fit(cleaned_houses, operation):
 
 
 @pytest.mark.parametrize("empty", [False, True], ids=["no-waterfront", "no-rows"])
+@pytest.mark.unit
 def test_fit_without_references_fails_clearly(cleaned_houses, empty):
     """No training references is an explicit error, not an invented fallback."""
     data = cleaned_houses.iloc[:0] if empty else cleaned_houses.assign(waterfront=0)
@@ -183,6 +195,7 @@ def test_fit_without_references_fails_clearly(cleaned_houses, empty):
 
 
 @pytest.mark.parametrize("column", HouseFeatureEngineer.FEATURE_NAMES[:-2])
+@pytest.mark.unit
 def test_missing_feature_column_is_named(cleaned_houses, column):
     """Report missing feature inputs instead of supplying hidden defaults."""
     engineer = HouseFeatureEngineer().fit(cleaned_houses)
@@ -193,6 +206,7 @@ def test_missing_feature_column_is_named(cleaned_houses, column):
 
 @pytest.mark.parametrize("column", ["lat", "long", "waterfront", "zipcode"])
 @pytest.mark.parametrize("value", ["unknown", True, 1 + 2j])
+@pytest.mark.unit
 def test_non_real_feature_inputs_fail(cleaned_houses, column, value):
     """Coordinate and feature measurements must be real numeric values."""
     data = cleaned_houses.copy()
@@ -204,6 +218,7 @@ def test_non_real_feature_inputs_fail(cleaned_houses, column, value):
 
 @pytest.mark.parametrize("column", ["lat", "long", "waterfront", "bedrooms"])
 @pytest.mark.parametrize("value", [np.nan, pd.NA, np.inf, -np.inf])
+@pytest.mark.unit
 def test_non_finite_feature_inputs_fail(cleaned_houses, column, value):
     """Nullable numeric dtypes must not bypass finite-value checks."""
     data = cleaned_houses.copy()
@@ -217,6 +232,7 @@ def test_non_finite_feature_inputs_fail(cleaned_houses, column, value):
     ("column", "value"),
     [("lat", -90.0), ("lat", 90.0), ("long", -180.0), ("long", 180.0)],
 )
+@pytest.mark.unit
 def test_geographic_boundaries_are_accepted(cleaned_houses, column, value):
     """Accept the physical latitude/longitude endpoints."""
     query = cleaned_houses.loc[[0]].copy()
@@ -236,6 +252,7 @@ def test_geographic_boundaries_are_accepted(cleaned_houses, column, value):
         ("long", np.nextafter(180.0, np.inf)),
     ],
 )
+@pytest.mark.unit
 def test_coordinates_just_outside_limits_fail(cleaned_houses, column, value):
     """Reject coordinates immediately beyond each geographic boundary."""
     data = cleaned_houses.copy()
@@ -245,12 +262,14 @@ def test_coordinates_just_outside_limits_fail(cleaned_houses, column, value):
         HouseFeatureEngineer().fit(data)
 
 
+@pytest.mark.unit
 def test_feature_input_requires_a_dataframe(cleaned_houses):
     """Preserve named input columns rather than accepting ambiguous arrays."""
     with pytest.raises(TypeError, match="pandas DataFrame"):
         HouseFeatureEngineer().fit(cleaned_houses.to_numpy())
 
 
+@pytest.mark.unit
 def test_duplicate_feature_columns_fail(cleaned_houses):
     """Reject ambiguous coordinate names rather than selecting both columns."""
     data = pd.concat([cleaned_houses, cleaned_houses[["lat"]]], axis=1)

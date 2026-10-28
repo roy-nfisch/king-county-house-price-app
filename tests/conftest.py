@@ -15,6 +15,21 @@ from king_county.features import HouseFeatureEngineer
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def pytest_collection_modifyitems(items):
+    """Require exactly one test category; Docker is an additional runtime label."""
+    categories = {"unit", "integration", "contract"}
+    for item in items:
+        assigned = [
+            mark.name for mark in item.iter_markers() if mark.name in categories
+        ]
+        if len(assigned) != 1:
+            raise pytest.UsageError(
+                f"{item.nodeid}: assign exactly one unit, integration, or contract marker"
+            )
+        if item.get_closest_marker("docker") and assigned != ["integration"]:
+            raise pytest.UsageError(f"{item.nodeid}: docker tests must be integration")
+
+
 @pytest.fixture(scope="module")
 def baseline():
     """Return fixed expected outputs and source-row labels for this module."""
