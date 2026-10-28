@@ -255,7 +255,28 @@ def test_compose_model_mount_is_read_only(compose_api):
     assert mount["read_only"] is True
 
 
-def test_compose_does_not_create_missing_model(compose_api):
-    """Missing artifacts must fail instead of becoming empty host directories."""
-    (mount,) = compose_api["volumes"]
-    assert mount["bind"]["create_host_path"] is False
+def test_compose_does_not_create_missing_model(image, tmp_path, monkeypatch):
+    """Test missing-file behaviour, not version-specific config serialization."""
+    missing = tmp_path / "missing-model.skops"
+    monkeypatch.setenv("MODEL_FILE", str(missing))
+    override = tmp_path / "image-override.json"
+    override.write_text(json.dumps({"services": {"api": {"image": image}}}))
+    root = Path(__file__).resolve().parents[2]
+    command = (
+        "compose",
+        "--env-file",
+        os.devnull,
+        "--project-name",
+        "missing-model-test-" + uuid4().hex,
+        "-f",
+        str(root / "compose.yaml"),
+        "-f",
+        str(override),
+    )
+    try:
+        with pytest.raises(subprocess.CalledProcessError) as failure:
+            docker(*command, "create", "--no-build", "--pull", "never", "api")
+        assert missing.name in failure.value.stdout + failure.value.stderr
+        assert not missing.exists()
+    finally:
+        docker(*command, "down", "--remove-orphans")
