@@ -170,8 +170,13 @@ cython_debug/
 .DS_Store
 Thumbs.db
 
-# Model files
-model/
+# Keep only the single reviewed API artifact eligible for version control.
+/model/*
+!/model/versions/
+/model/versions/*
+!/model/versions/king-county-20261028T153712021211Z/
+/model/versions/king-county-20261028T153712021211Z/*
+!/model/versions/king-county-20261028T153712021211Z/pipeline.skops
 
 # Git Artifacts
 *.patch

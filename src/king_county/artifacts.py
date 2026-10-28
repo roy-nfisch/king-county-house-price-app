@@ -13,7 +13,7 @@ MODEL_VERSION = "king-county-20261028T153712021211Z"
 EXPECTED_MODEL_SHA256 = (
     "607d24aa27c464e5dda0aae260f050e9104f5377623e22ae7cdce98793383025"
 )
-DEFAULT_MODEL_PATH = Path("model/refactored") / MODEL_VERSION / "pipeline.skops"
+DEFAULT_MODEL_PATH = Path("model/versions") / MODEL_VERSION / "pipeline.skops"
 TRUSTED_MODEL_TYPES = (
     "king_county.cleaning.HouseCleaner",
     "king_county.features.HouseFeatureEngineer",
