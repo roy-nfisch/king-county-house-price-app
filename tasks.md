@@ -56,7 +56,8 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Export a new ignored timestamped skops bundle with metadata, checksum, versions, input contract, and held-out reload example; do not overwrite the original artifact.
     - [x] Verify fresh-process reload and prediction without the CSV; add small integration tests for fold isolation, metadata, explicit trusted types, checksum rejection, no refit, and overwrite prevention.
     - [x] Pass 195 local tests, Ruff, formatting, package build, notebook validation, local documentation links, original-artifact checksums, and 50-line checks. Only the unchanged original notebook emits pandas deprecation warnings.
-    - [ ] Review T08 before opening a PR. No API work, commit, push, or GitHub CI for T08 yet.
+    - [x] Review the implementation and scope before opening a PR. Training stays in the notebook; API work is not included. The implementation is committed and pushed.
+    - [x] Confirm PR CI passes, review the changes, and merge before marking T08 done.
 
 ## To do
 
