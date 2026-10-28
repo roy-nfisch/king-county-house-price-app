@@ -2,7 +2,7 @@
 
 We are turning the King County house-price notebook into a simple, object-oriented Python application. The course's core task is to extract data cleaning and feature engineering into a reusable pipeline. Training, evaluation, and model saving stay in the notebook. Our portfolio extension adds a prediction API, tests, and a local Docker run.
 
-**Status: notebook baseline complete locally (T05).** T04 is merged, with GitHub checks passing on `ubuntu-slim`. T05's working notebook and controlled preprocessing snapshot pass local checks; see [the baseline reference](docs/notebook-baseline.md). Next is T06: extract cleaning into Python. Cleaning/feature classes, the prediction API, model verification, and the app's Docker setup are not implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
+**Current scope:** cleaning is extracted into the reusable `HouseCleaner` class and used by the working notebook. Feature engineering is still inline. The prediction API, model verification, and the app's Docker setup are not implemented yet. See [tasks](tasks.md) for progress and [the baseline reference](docs/notebook-baseline.md) for comparisons with the original. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
 
 ## Our project at a glance
 
@@ -24,7 +24,7 @@ For the first demo, we can supply feature-only records from the bundled dataset.
 
 ### Quality and traceability
 
-The executed notebook records test **R² = 0.844** for its final model. This is not 84.4% accuracy, a rerun by the agent, or a verified score for the proposed app. The data covers 2014–2015; this is an educational project, not a current valuation service.
+An earlier review of the executed notebook recorded test **R² = 0.844** for its final model; the notebook's saved outputs are now cleared. This is not 84.4% accuracy, a new rerun, or a verified score for the proposed app. The data covers 2014–2015; this is an educational project, not a current valuation service.
 
 We propose minimal request/model/outcome logging and optional result saving, not a separate audit platform. The [design](docs/design.md#a-lightweight-audit-not-another-platform) explains what would be recorded and the privacy limits.
 
@@ -51,7 +51,7 @@ By the end of this repository, you should be able to:
 
 ## Repository layout
 
-Main files and folders at T05; folder contents are collapsed where not relevant:
+Current files and folders; supporting folder contents are collapsed:
 
 ```text
 mle-refactoring-project/
@@ -61,9 +61,14 @@ mle-refactoring-project/
 ├── src/
 │   └── king_county/
 │       ├── __init__.py            # Makes king_county an importable package
+│       ├── cleaning.py            # Copy-first HouseCleaner transformer
+│       ├── validation.py          # HouseDataValidator input checks
 │       ├── settings.py            # Pydantic validation for LOG_LEVEL
 │       └── logging_config.py      # Standard Python console logging setup
 ├── tests/
+│   ├── conftest.py                # Shared fixtures from the existing CSV
+│   ├── test_cleaning.py           # Cleaning behaviour and invalid inputs
+│   ├── test_validation.py         # Validator checks and input preservation
 │   ├── test_settings.py           # Defaults, allowed levels and invalid settings
 │   ├── test_logging_config.py     # Logging configuration unit test
 │   ├── test_package.py            # Installed imports and real console logging
@@ -90,7 +95,7 @@ mle-refactoring-project/
 └── LICENSE
 ```
 
-`model/` is local and will not appear in a fresh clone. `.venv/`, caches, and `dist/` build outputs are omitted from this tree and ignored by Git. The planned cleaning, feature-engineering, and prediction modules are not created yet.
+`model/` is local and will not appear in a fresh clone. `.venv/`, caches, and `dist/` build outputs are omitted from this tree and ignored by Git. Feature-engineering and prediction modules are not created yet.
 
 ## Setup
 
@@ -169,7 +174,7 @@ code .
 
 Then open [King-County.ipynb](King-County.ipynb) and select the Python environment created by `uv sync` as the kernel.
 
-## Development checks (T04)
+## Development checks
 
 Run these from the project root. `uv sync --locked` installs the package and development dependencies using `uv.lock`; do not add `src/` to `PYTHONPATH`.
 
@@ -182,6 +187,10 @@ uv build
 ```
 
 Ruff currently checks the new package, tests, and `pyproject.toml`, not the original notebook or the separate bonus solution. CI runs the checks and Python package build on `ubuntu-slim` for pushes, pull requests, or a manual run. It uses the existing Python 3.13 version rule and a locked dependency install; no API keys or model files are needed, and it does not train or deploy a model. The slim runner has a 15-minute job limit. Future Docker build/container checks will use a separate `ubuntu-latest` job; registry publishing is tracked separately in [T11a](tasks.md#to-do) and is not implemented yet.
+
+The working notebook uses `HouseCleaner().fit_transform(raw_data)`. It recalculates basement area, fills the specified missing values, and combines construction/renovation years. It returns a copy, keeps row labels, and never drops houses. Its fixed rules do not learn from the dataset; `fit` validates the input for pipeline compatibility. The known training-row exclusion stays outside the cleaner.
+
+The cleaner delegates input checks to a separate object: `HouseDataValidator(raw_data).validate()`. The validator checks the table, real numeric types, finite values, area relationships, and safe integer storage for years, then returns the numeric cleaning columns. The validator checks; the cleaner transforms.
 
 `AppSettings` reads `LOG_LEVEL` from the environment; the default is `INFO`. Allowed values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. An invalid value raises a Pydantic validation error. Use logging explicitly at startup; importing the package does not configure global logging:
 

@@ -1,8 +1,8 @@
 # King County: notebook to application
 
-**Status: design approved; T04 foundation complete.** This document describes the agreed application design, not a completed prediction application. Training, evaluation, and model saving stay in the notebook.
+**Status: design approved.** This document describes the agreed application design, not a completed prediction application. Training, evaluation, and model saving stay in the notebook. Track implementation progress in [tasks](../tasks.md).
 
-T05's [baseline reference](notebook-baseline.md) records exact preprocessing rules, controlled outputs, and differences between the working copy and the original.
+The [baseline reference](notebook-baseline.md) records exact preprocessing rules, controlled outputs, and differences between the working copy and the original.
 
 ## 1. What the notebook currently does
 
@@ -17,7 +17,7 @@ The notebook loads 21,597 house-sale records, cleans them, creates features, tra
 | Train | Compare linear and polynomial regressions, then tune a pipeline containing polynomial features, scaling, and ElasticNet with target scaling. |
 | Save | Write the selected pipeline to `model/model.bin` using skops. |
 
-The saved notebook reports adjusted R² values of **0.43**, **0.48**, and **0.75** for the earlier models, and ordinary test R² **0.844** for the final model. These are recorded outputs, not newly reproduced results. Adjusted and ordinary R² are different measures; neither means "84.4% of predictions are correct."
+An earlier review recorded adjusted R² values of **0.43**, **0.48**, and **0.75** for the earlier models, and ordinary test R² **0.844** for the final model. The notebook's saved outputs are now cleared; these results have not been newly reproduced. Adjusted and ordinary R² are different measures; neither means "84.4% of predictions are correct."
 
 ### What we inspected in the artifact
 
@@ -42,6 +42,7 @@ Use **composition**: each class owns one job and receives the components it need
 
 | Component | Its job | What it must not do |
 |---|---|---|
+| `HouseDataValidator` | Hold the input table and run its named checks through `validate()`. Return numeric cleaning columns or raise a clear error. | Fill missing values, remove rows, or apply cleaning rules. |
 | `HouseCleaner` | Apply the stated cleaning rules to a copy of the input table. Use sklearn's transformer interface. | Train a model or silently remove prediction rows. |
 | `HouseFeatureEngineer` | Learn and retain waterfront reference locations in `fit`; create distances and ordered features in `transform`. | Learn new references from prediction requests or use sale price as an input. |
 | `PredictionService` | Verify the pinned model checksum before loading the trusted fitted pipeline once; turn validated house details into a prediction. | Refit preprocessing, retrain, or save house records. |
@@ -50,10 +51,11 @@ Use **composition**: each class owns one job and receives the components it need
 
 ### Where these jobs come from in the notebook
 
-Cell numbers below count **all cells, including Markdown**, starting at 1. `In[...]` identifies this saved run and can change after rerunning. Search for the shown heading or code to find the same step.
+Cell numbers below count **all cells, including Markdown**, starting at 1. `In[...]` refers to the earlier reviewed run; execution counts are now cleared and can change after rerunning. Search for the shown heading or code to find the same step.
 
 | Proposed component | Notebook heading and cells | Recognisable code / move |
 |---|---|---|
+| `HouseDataValidator` | No separate validator in the original notebook. | New safeguards around the extracted cleaning inputs, separate from the future API's Pydantic contract. |
 | `HouseCleaner` | **Data Preparation**, code cells 31, 36, 39, 42–44 (`In[10]`, `In[13]`, `In[15]`, `In[17]`–`In[19]`). | Rebuild `sqft_basement`; fill `view` / `waterfront`; create `last_known_change`. Cell 29's fixed-row exclusion belongs to training-row rules, not request cleaning. |
 | `HouseFeatureEngineer` | **Feature Engineering**, cell 61 (`In[28]`); **Distance to the waterfront**, cells 68–71 (`In[32]`–`In[35]`); **Modeling**, cells 79–81, 93, 102. | Create `center_distance` / `water_distance`, then select and order inputs. `X_train.columns` shows 20 columns; dropping `id` leaves 19. Do not include the exploratory `sqft_price`. |
 | Notebook training — stays in the notebook | **Data Preparation**, cell 29; **Modeling**, cells 79–83; **Regularization and Hyperparameter Tuning**, cells 118–121; **Save the Model**, cell 132. | Import our preprocessing classes, then apply training-row rules, split, fit/tune, evaluate, and save the complete pipeline. Do not turn these steps into an application service. |
@@ -67,7 +69,7 @@ This is the familiar application shape: **validated request → service → vali
 
 ### Training in the notebook: build and save what prediction will reuse
 
-The working notebook imports `HouseCleaner` and `HouseFeatureEngineer`. Data splitting, model training, tuning, evaluation, prediction for error analysis, and model saving stay in the notebook. The application only loads the exported pipeline and predicts; it does not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
+The planned training notebook will import `HouseCleaner` and `HouseFeatureEngineer`. Currently, the working copy imports only `HouseCleaner` and keeps feature engineering inline. Data splitting, model training, tuning, evaluation, prediction for error analysis, and model saving stay in the notebook. The application will load the exported pipeline and predict; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
 
 ```mermaid
 flowchart LR
@@ -153,7 +155,7 @@ If the intended interface must work with fewer details, the alternative is to **
 
 **Current limitations:** the source sales are from 2014–2015, so this is an educational demonstration, not a current property valuation service. The notebook uses a shuffled row split and contains repeated house IDs. We have not established performance on future sales or entirely unseen properties.
 
-**Stale narrative:** the final notebook paragraph says roughly 83%, while this saved run reports R² 0.844. Some later outlier lookups also use fixed house IDs rather than the IDs produced by this run. Keep these as documented observations; do not silently change the notebook or turn them into portfolio claims.
+**Stale narrative:** the final notebook paragraph says roughly 83%, while the earlier reviewed run reported R² 0.844. Some later outlier lookups also use fixed house IDs rather than the IDs produced by that run. Keep these as historical observations; the cleared outputs no longer show that run. Do not silently change the notebook or turn these into current portfolio claims.
 
 ## 4. Tests, logging, and failure behaviour
 

@@ -12,13 +12,6 @@ from pandas.testing import assert_frame_equal
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.fixture(scope="module")
-def baseline():
-    """Return the reviewed snapshot; read source rows from the existing CSV."""
-    fixture = ROOT / "tests/fixtures/notebook_baseline.json"
-    return json.loads(fixture.read_text())
-
-
 def run_preprocessing(notebook_name, baseline):
     """Execute only our trusted notebook's selected preprocessing cells.
 
@@ -33,15 +26,23 @@ def run_preprocessing(notebook_name, baseline):
     dataset = ROOT / "data/King_County_House_prices_dataset.csv"
     frame = pd.read_csv(dataset).loc[baseline["source_rows"]].copy()
     namespace = {"np": np, "pd": pd, "kc_data": frame}
-    for number in baseline["source_cells"]:
-        if notebook_name == "King-County.ipynb":
-            cell = notebook["cells"][number - 1]
-        else:
-            cell = next(
-                c
-                for c in notebook["cells"]
-                if c.get("metadata", {}).get("original_cell") == number
+    if notebook_name == "King-County.ipynb":
+        cells = [
+            (number, notebook["cells"][number - 1])
+            for number in baseline["source_cells"]
+        ]
+    else:
+        cells = [
+            (cell.get("metadata", {}).get("original_cell", "shared-step"), cell)
+            for cell in notebook["cells"]
+            if cell["cell_type"] == "code"
+            and (
+                cell.get("metadata", {}).get("baseline_step")
+                or cell.get("metadata", {}).get("original_cell")
+                in baseline["source_cells"]
             )
+        ]
+    for number, cell in cells:
         source = "".join(cell["source"])
         exec(compile(source, f"{notebook_name}:cell-{number}", "exec"), namespace)
     return namespace

@@ -7,7 +7,9 @@ Before changing the code's structure, we need a reference for its behaviour. Thi
 | File | Purpose |
 |---|---|
 | `King-County.ipynb` | Original course notebook; not edited by T05. Its committed execution outputs are currently cleared. |
-| `King-County-refactored.ipynb` | A 25-cell working copy containing the original cleaning and feature-selection code, without EDA or training. T06/T07 will replace inline transformations with imports. |
+| `King-County-refactored.ipynb` | A 20-cell working copy importing `HouseCleaner`; distance calculations and feature selection are still inline. No EDA or training. |
+| `src/king_county/cleaning.py` | Reusable sklearn-compatible cleaner; fixed rules, no row removal or learned values. |
+| `src/king_county/validation.py` | Separate validation object used by the cleaner; checks inputs without modifying them. |
 | `tests/fixtures/notebook_baseline.json` | Fixed expected outputs and feature order; no duplicate raw dataset. |
 | `tests/test_notebook_baseline.py` | Runs selected trusted preprocessing cells against controlled CSV rows. No training or model loading. |
 
@@ -46,9 +48,19 @@ Only rows **49 and 230** are waterfront references in this comparison. Its froze
 
 Tests compare six transformed columns, retained row labels, waterfront reference rows, and all 19 feature names in order. Float comparisons use `rtol=1e-10` and `atol=1e-8`, allowing rounding noise rather than a changed formula. A dataset SHA-256 detects source-data changes. Tests must never regenerate expected values automatically.
 
-These tests temporarily execute selected cells from our own trusted notebooks. This is a baseline bridge, not the application's loading mechanism. In T06/T07, use the same expected outputs to check the extracted classes.
+These tests temporarily execute selected cells from our own trusted notebooks. The working copy now calls `HouseCleaner`, while the original still runs its inline cleaning. Both use the same frozen expected values. Feature extraction will reuse this comparison next. This is a baseline bridge, not the application's loading mechanism.
 
-The preserved original code emits pandas warnings about `DataFrame.drop(..., inplace=True)`. They remain visible rather than being suppressed. T06 will replace mutation with copy-first transformations; T05 deliberately preserves the original source.
+Pandas warnings about `DataFrame.drop(..., inplace=True)` remain visible in the unchanged original and the working copy's training-row exclusion. `HouseCleaner` uses copy-first transformations without `inplace`.
+
+## Extracted cleaning
+
+`HouseCleaner` applies the notebook's fixed cleaning rules and returns a new DataFrame. It preserves row labels and unrelated columns, including a training target if present. `fit` validates input but learns no means, medians, or references; `transform` applies the rules. Training-row filtering stays in the notebook and must never silently discard a prediction request.
+
+Missing required columns, non-real cleaning values (including booleans and complex numbers), missing living/above-ground/build-year values, infinities, and inconsistent areas now raise clear errors. Years must also fit the output's signed 64-bit integer storage, rather than silently overflow or lose precision. This is a technical storage limit, not an invented range of plausible construction dates. Explicit null view/waterfront/renovation values follow the original fill/fallback rules. These checks are input safeguards, not new imputation rules or a replacement for the future API's Pydantic contract.
+
+The checks live in `HouseDataValidator`, not in the cleaner. `HouseDataValidator(raw_data).validate()` runs the named checks in order and returns the numeric cleaning columns. Direct validator tests check failures and input preservation; cleaner tests check transformations and pipeline behaviour.
+
+Boundary tests explicitly cover zero and just-negative areas, equality and values just above/below the living-area limit, finite floating-point extremes, and both infinities. They also cover year-storage boundaries, each nullable field, zero renovation, empty/single-house batches, and nonsequential/duplicate row labels. They do not invent maximum house sizes, plausible construction-year ranges, or API business rules that the cleaner does not implement.
 
 ## Training settings recorded for T08
 
