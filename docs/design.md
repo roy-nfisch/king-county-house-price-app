@@ -62,7 +62,7 @@ Cell numbers below count **all cells, including Markdown**, starting at 1. `In[.
 | Notebook training — stays in the notebook | **Data Preparation**, cell 29; **Modeling**, cells 79–83; **Regularization and Hyperparameter Tuning**, cells 118–121; **Save the Model**, cell 132. | Import our preprocessing classes, then apply training-row rules, split, fit/tune, evaluate, and save the complete pipeline. Do not turn these steps into an application service. |
 | `PredictionService` | **Regularization and Hyperparameter Tuning**, cell 124 (`In[73]`) calls `elastic.predict(X_test_poly)`. | Reuse that prediction operation with the complete saved preprocessing pipeline. Startup loading and HTTP requests are new application code, not existing notebook steps. |
 | Pydantic models | No corresponding notebook implementation. **Business Understanding**, cell 5, describes dataset fields. | New validation around incoming house JSON, settings, and outgoing results. |
-| FastAPI routes | No corresponding notebook implementation. | New API boundary; the separate `bonus_solution/` demonstrates CRUD, not this prediction API. |
+| FastAPI routes | No corresponding notebook implementation. | Planned prediction API boundary; the course's optional CRUD example is not included in this repository. |
 
 The notebook creates waterfront references before splitting. Moving reference fitting inside the training pipeline is a deliberate change, explained in section 3; the table maps responsibilities, not an identical execution order.
 

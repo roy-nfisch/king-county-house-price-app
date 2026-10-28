@@ -16,7 +16,7 @@ The main focus of this project is the refactoring of the data cleaning and featu
 - Create a `Dockerfile` for the app.
 - Run the app inside a Docker container.
 
-If you want a working reference for this optional stretch goal, see [bonus_solution/](./bonus_solution/). It includes a minimal FastAPI + Postgres + Docker example and is meant as a guide, not a required structure.
+The course supplied a separate FastAPI + Postgres + Docker reference for this optional stretch goal. That example is not included in this portfolio repository; our implementation and deferred work are tracked in [tasks.md](tasks.md).
 
 ### Extra (if you still have time)
 

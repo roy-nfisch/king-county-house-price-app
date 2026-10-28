@@ -1,234 +1,130 @@
-# Refactoring Project
+# King County: From Notebook to Python
 
-We are turning the King County house-price notebook into a simple, object-oriented Python application. The course's core task is to extract data cleaning and feature engineering into a reusable pipeline. Training, evaluation, and model saving stay in the notebook. Our portfolio extension adds a prediction API, tests, and a local Docker run.
+We are refactoring a house-price notebook into a small, object-oriented Python project. The goal is to make its preprocessing reusable, testable, and eventually usable by a prediction application—not to build another training service.
 
-**Current scope:** the working notebook now uses `HouseCleaner` and the fitted `HouseFeatureEngineer` in a reusable preprocessing pipeline. It checks the original baseline without training a model. Model integration/export, the prediction API, model verification, and the app's Docker setup are not implemented yet. See [tasks](tasks.md) for progress and [the baseline reference](docs/notebook-baseline.md) for comparisons with the original. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
+This is a portfolio project developed during the neue fische MLE course. It builds on the supplied King County notebook and dataset, with our own Python package, validation, tests, and CI.
 
-## Our project at a glance
+## What works today
 
-| Stage | What we build |
-|---|---|
-| Course core | Small Python objects for cleaning and feature engineering, with reusable pipeline steps. |
-| Notebook | Import our preprocessing classes, train and evaluate the complete pipeline, and save it for the app. No training service or endpoint. |
-| Our first application | Load the saved pipeline; accept house details through FastAPI; return a predicted total sale price in US dollars. Add Pydantic validation, logging, unit/integration tests, PR checks, and Docker. |
-| Optional result saving | Save a prediction result before returning it. Off by default; separate from saving the trained model. |
-| Later | House CRUD with a database; optional cloud deployment. |
+- **Reusable preprocessing:** `HouseCleaner` and `HouseFeatureEngineer` run together in a scikit-learn pipeline.
+- **Clear responsibilities:** validation checks inputs; the cleaner transforms them; the feature object calculates distances and returns 19 ordered model inputs.
+- **Stored reference data:** fitting remembers training waterfront coordinates. Transforming new houses reuses those coordinates without fitting again.
+- **Regression tests:** controlled examples check that the refactor preserves the original preprocessing results.
+- **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 
-See [the design and flow diagrams](docs/design.md) for class responsibilities, exact notebook cell references, and the proposed request example. [tasks.md](tasks.md) tracks what is done and what we will build next. We use small branches and PRs to review each piece.
+**Still planned:** connecting preprocessing to notebook model training/export, then adding a prediction API and Docker. There is no prediction server to start yet. See [tasks.md](tasks.md) for progress.
 
-### What information does prediction need?
+## The flow
 
-The saved notebook model expects **19 prepared features**. Our proposed API accepts **17 raw fields** and calculates basement area, the construction/renovation field, and distance features. It needs location and neighbouring-house measurements, not just the five CRUD fields.
-
-For the first demo, we can supply feature-only records from the bundled dataset. For a new house, missing required details mean a validation error. Supporting fewer fields requires training and evaluating a separate model—not inventing values. The full input contract and example are in [the design](docs/design.md#what-if-we-do-not-have-all-the-inputs).
-
-### Quality and traceability
-
-An earlier review of the executed notebook recorded test **R² = 0.844** for its final model; the notebook's saved outputs are now cleared. This is not 84.4% accuracy, a new rerun, or a verified score for the proposed app. The data covers 2014–2015; this is an educational project, not a current valuation service.
-
-We propose minimal request/model/outcome logging and optional result saving, not a separate audit platform. The [design](docs/design.md#a-lightweight-audit-not-another-platform) explains what would be recorded and the privacy limits.
-
-Before loading the model, the app will check its SHA-256 against an approved checksum pinned in code and stop on mismatch. This checks file integrity, not prediction quality or the safety of an untrusted model. See [the model integrity design](docs/design.md#model-integrity-before-loading).
-
-The course setup and reference material follow below. They do not yet provide a command to start our planned prediction app.
-
-## Learning Objectives
-
-By the end of this repository, you should be able to:
-
-- Read and understand an existing Data Science notebook well enough to refactor it.
-- Refactor data cleaning and feature engineering code into reusable Python functions.
-- Build a pipeline that reproduces a notebook's preprocessing steps end to end.
-- Apply the same refactoring approach to a modeling workflow (stretch goal).
-- Build and containerize a FastAPI CRUD service backed by a database (stretch goal).
-
-## Learning Path
-
-| File / Folder | Description |
-|---|---|
-| [**Project Description**](project-description.md) | The assignment tasks and stretch goals. |
-| [**King County Notebook**](King-County.ipynb) | The original notebook: EDA, cleaning, feature engineering, and modeling for King County house prices. |
-
-## Repository layout
-
-Current files and folders; supporting folder contents are collapsed:
-
-```text
-mle-refactoring-project/
-├── .github/
-│   └── workflows/
-│       └── ci.yml                # Automated lint, format, tests and package build
-├── src/
-│   └── king_county/
-│       ├── __init__.py            # Makes king_county an importable package
-│       ├── cleaning.py            # Copy-first HouseCleaner transformer
-│       ├── features.py            # Fitted distances and 19 ordered model inputs
-│       ├── validation.py          # Cleaning and feature input validators
-│       ├── settings.py            # Pydantic validation for LOG_LEVEL
-│       └── logging_config.py      # Standard Python console logging setup
-├── tests/
-│   ├── conftest.py                # Shared fixtures from the existing CSV
-│   ├── king_county/              # Mirrors src/king_county
-│   │   ├── test_cleaning.py      # Cleaning behaviour and invalid inputs
-│   │   ├── test_features.py      # Distances, output order and reference isolation
-│   │   ├── test_validation.py    # Validator checks and input preservation
-│   │   ├── test_settings.py      # Defaults, allowed levels and invalid settings
-│   │   ├── test_logging_config.py # Logging configuration unit test
-│   │   └── test_package.py       # Installed imports and real console logging
-│   ├── notebooks/
-│   │   └── test_notebook_baseline.py # Original/working preprocessing parity
-│   └── fixtures/
-│       └── notebook_baseline.json # Fixed derived values, not duplicate CSV data
-├── docs/
-│   ├── design.md                 # Agreed design, notebook mapping and diagrams
-│   └── notebook-baseline.md      # Rules, settings and baseline provenance
-├── data/
-│   └── King_County_House_prices_dataset.csv
-├── assets/                       # Original notebook images
-├── bonus_solution/               # Separate course CRUD reference, unchanged
-├── model/                        # Local saved model; ignored by Git
-├── King-County.ipynb              # Training, evaluation and model saving
-├── King-County-refactored.ipynb    # Working preprocessing copy for extraction
-├── .gitignore                    # Excludes local/generated files
-├── .python-version               # Existing Python 3.13 version rule
-├── pyproject.toml                # Dependencies, packaging, pytest and Ruff
-├── uv.lock                       # Exact resolved dependency versions
-├── project-description.md        # Original course assignment
-├── tasks.md                      # Task progress and completion checks
-├── README.md                     # Project overview and development commands
-└── LICENSE
+```mermaid
+flowchart LR
+    A[House data] --> B[HouseCleaner]
+    B --> C[HouseFeatureEngineer]
+    C --> D[19 ordered features]
+    D -. Next: notebook training and export .-> E[Saved prediction pipeline]
 ```
 
-`model/` is local and will not appear in a fresh clone. `.venv/`, caches, and `dist/` build outputs are omitted from this tree and ignored by Git. Prediction modules are not created yet.
+Training, evaluation, and model saving stay in the notebook. The future application will load the saved pipeline and predict; it will not run the notebook or retrain during requests.
 
-## Setup
+The working notebook currently fits all retained rows **only to compare with the original baseline**. For model evaluation, we must split first and fit preprocessing on training rows only. That integration is the next step.
 
-Use [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.5 or newer
-and Python 3.13.17 or a newer 3.13 patch release, as defined in
-[`.python-version`](.python-version).
+## Run locally
 
-Rebuild existing Docker images with `--pull --no-cache` after this update
-to refresh their system certificates and dependencies.
-
-> [!NOTE]
-> Throughout these steps, text in angle brackets like `<repo-name>` is a **placeholder**. Replace it, including the `< >` brackets, with your own value. For example, `cd <repo-name>` becomes `cd mle-refactoring-project`.
-
-### 1. Create the Repository from the Template
-
-Click **Use this template** on GitHub.
-
-When creating the repository:
-
-- Set yourself as the **Owner**
-- Choose a repository name
-- Disable **Include all branches**
-- Click **Create repository**
-
-> [!IMPORTANT]
-> If you are working in pairs or groups, only **one person** should complete this step.
-
----
-
-### 2. Add Collaborators (Pairs/Groups Only)
-
-If working with teammates:
-
-1. Open the repository on GitHub
-2. Go to **Settings → Collaborators**
-3. Add your teammates as collaborators
-4. Share the repository link with your team
-
-Teammates should accept the invitation before continuing.
-
----
-
-### 3. Clone the Repository
-
-Copy the SSH URL from the **Code** button on GitHub, then run:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.5 or newer. The project uses Python 3.13.17 or a newer 3.13 patch release.
 
 ```bash
-git clone <copied-ssh-url>
-```
-
-The copied SSH URL will look like `git@github.com:<your-username>/<repo-name>.git`.
-
----
-
-### 4. Move into the Project Folder and Install Dependencies
-
-This installs all dependencies and creates a virtual environment in `.venv/`.
-
-```bash
-cd <repo-name>
-uv sync
-```
-
----
-
-### 5. Open the Repository in VS Code
-
-> [!NOTE]
-> Make sure you open VS Code from the project root so it automatically detects the environment created by `uv sync`.
-
-Launch VS Code in the project root folder:
-
-```bash
-code .
-```
-
-Then open [King-County.ipynb](King-County.ipynb) and select the Python environment created by `uv sync` as the kernel.
-
-## Development checks
-
-Tests mirror the source packages: `src/king_county/` has its tests in `tests/king_county/`. When we add `src/api/`, its tests will go in `tests/api/`. Notebook regression checks live separately in `tests/notebooks/`. Shared fixtures stay in `tests/conftest.py` and `tests/fixtures/`; package-specific fixtures can live in that package's test folder. Pytest discovers these folders recursively, so CI will also run future API tests without a new job. No empty API package or extra `__init__.py` files are needed.
-
-Run these from the project root. `uv sync --locked` installs the package and development dependencies using `uv.lock`; do not add `src/` to `PYTHONPATH`.
-
-```bash
+git clone https://github.com/roy-nfisch/mle-refactoring-project.git
+cd mle-refactoring-project
 uv sync --locked
+```
+
+Open [King-County-refactored.ipynb](King-County-refactored.ipynb) in your notebook editor, select the project's `.venv` kernel, and run it from the project root. It reads the bundled CSV and prepares features; it does not train or overwrite a model.
+
+For the original EDA and modelling workflow, see [King-County.ipynb](King-County.ipynb).
+
+### Use the preprocessing package
+
+```python
+import pandas as pd
+from sklearn.pipeline import Pipeline
+
+from king_county.cleaning import HouseCleaner
+from king_county.features import HouseFeatureEngineer
+
+training_houses = pd.read_csv("data/King_County_House_prices_dataset.csv")
+preprocessor = Pipeline([
+    ("cleaning", HouseCleaner()),
+    ("features", HouseFeatureEngineer()),
+])
+# In model evaluation, pass only the training split here.
+prepared = preprocessor.fit_transform(training_houses)
+print(prepared.shape)
+```
+
+Use `preprocessor.transform(new_houses)` afterwards to reuse the fitted references. The training input must contain at least one waterfront house. Invalid or missing required inputs raise an error rather than receiving guessed values.
+
+## Run the checks
+
+```bash
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 uv run --locked pytest tests/
 uv build
 ```
 
-Ruff currently checks the new package, tests, and `pyproject.toml`, not the original notebook or the separate bonus solution. CI runs the checks and Python package build on `ubuntu-slim` for pushes, pull requests, or a manual run. It uses the existing Python 3.13 version rule and a locked dependency install; no API keys or model files are needed, and it does not train or deploy a model. The slim runner has a 15-minute job limit. Future Docker build/container checks will use a separate `ubuntu-latest` job; registry publishing is tracked separately in [T11a](tasks.md#to-do) and is not implemented yet.
+Tests mirror the source packages: `src/king_county/` → `tests/king_county/`. Notebook regression tests live in `tests/notebooks/`; shared fixtures stay at the test root. Future `src/api/` code will have its tests in `tests/api/`, discovered by the same CI command.
 
-The working notebook runs a sklearn pipeline with two objects. `HouseCleaner` recalculates basement area, fills the specified missing values, and combines construction/renovation years. It returns a copy, keeps row labels, and never drops houses. Its fixed rules do not learn from the dataset; `fit` validates the input for pipeline compatibility. The known training-row exclusion stays outside the cleaner.
+CI runs lint, formatting, tests, and the package build on pushes and pull requests. It does not train or deploy a model and needs no API keys or model artifact.
 
-The cleaner delegates input checks to a separate object: `HouseDataValidator(raw_data).validate()`. The validator checks the table, real numeric types, finite values, area relationships, and safe integer storage for years, then returns the numeric cleaning columns. The validator checks; the cleaner transforms.
+## Repository layout
 
-`HouseFeatureEngineer.fit(cleaned_training_houses)` remembers only the training waterfront coordinates. `transform(cleaned_new_houses)` reuses them to calculate distances and return the 19 ordered features, excluding targets and IDs. `HouseFeatureValidator` checks the cleaned inputs. Both distances share one calculation method while keeping the notebook's different latitude corrections. The working notebook deliberately fits on all retained rows for baseline comparison only; model evaluation must split first and fit on training rows, which is the next step.
-
-`AppSettings` reads `LOG_LEVEL` from the environment; the default is `INFO`. Allowed values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. An invalid value raises a Pydantic validation error. Use logging explicitly at startup; importing the package does not configure global logging:
-
-```python
-import logging
-
-from king_county.logging_config import configure_logging
-from king_county.settings import AppSettings
-
-settings = AppSettings.from_environment()
-configure_logging(settings)
-logging.getLogger("king_county").info("Foundation ready")
+```text
+mle-refactoring-project/
+├── .github/workflows/ci.yml       # Automated development checks
+├── src/king_county/
+│   ├── __init__.py
+│   ├── cleaning.py               # Copy-first cleaning rules
+│   ├── features.py               # Fitted distances and ordered features
+│   ├── validation.py             # Cleaning and feature input checks
+│   ├── settings.py               # Pydantic logging settings
+│   └── logging_config.py         # Console logging setup
+├── tests/
+│   ├── conftest.py               # Shared fixtures from the existing CSV
+│   ├── king_county/              # Tests matching the Python package
+│   ├── notebooks/                # Original/refactored regression comparison
+│   └── fixtures/                 # Fixed expectations, not a duplicate CSV
+├── docs/
+│   ├── design.md                 # Class responsibilities and planned app
+│   └── notebook-baseline.md      # Original rules and comparison details
+├── data/King_County_House_prices_dataset.csv
+├── assets/                       # Notebook images
+├── King-County.ipynb              # Original EDA and modelling reference
+├── King-County-refactored.ipynb    # Reusable preprocessing working copy
+├── pyproject.toml                # Dependencies and development configuration
+├── uv.lock                       # Locked dependencies
+├── .python-version
+├── .gitignore
+├── project-description.md        # Course assignment for context
+├── tasks.md                      # Progress and next steps
+├── README.md
+└── LICENSE
 ```
 
-## How to Use This Repo
+The local `model/` folder is ignored and is not included in a fresh clone. Generated files, virtual environments, and local course references are also excluded.
 
-1. Read the assignment brief in [project-description.md](project-description.md).
-2. Work through the notebook in [King-County.ipynb](King-County.ipynb).
-3. Refactor the cleaning and feature engineering logic into Python files.
-4. Build a reusable pipeline.
-5. If you want an extra challenge, extend your refactor to cover the modeling step as well.
-6. If you want to go even further, use [bonus_solution/](bonus_solution/) as a reference for the optional FastAPI + Docker stretch goal.
+## Prediction inputs and limitations
 
-## Bonus Solution
+The original notebook model uses **19 prepared features**. Our planned API will accept **17 raw fields** and derive basement area, the construction/renovation field, and distances. Missing information must produce a validation error; supporting fewer fields would require a separately trained and evaluated model. See [the input design](docs/design.md#what-if-we-do-not-have-all-the-inputs).
 
-The [bonus_solution/](bonus_solution/) folder contains a minimal working example of:
+The data covers **2014–2015**. This is an educational project, not a current property valuation service. No model-quality result is claimed for the refactored pipeline yet. Regression tests establish compatibility with the original preprocessing—not prediction accuracy.
 
-- a FastAPI CRUD API
-- Postgres persistence
-- a `Dockerfile` for the API
-- a `docker-compose.yaml` file to run the API and database together
+The planned model loader will verify an approved SHA-256 before loading. This checks artifact integrity, not model quality or the safety of an untrusted file.
 
-It is included as a reference implementation for the optional stretch task, not as a required project structure.
+## Project notes
+
+- [Design and diagrams](docs/design.md): responsibilities, notebook mapping, and planned prediction flow.
+- [Baseline reference](docs/notebook-baseline.md): preserved rules and regression checks.
+- [Task list](tasks.md): completed work and next steps.
+- [Original assignment](project-description.md): the course requirements behind this project.
+
+The course's optional CRUD/database example is not part of this project's current implementation. Its local reference copy is excluded from Git. We are focusing on preprocessing first, followed by our prediction application.

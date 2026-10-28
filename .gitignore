@@ -175,3 +175,6 @@ model/
 
 # Git Artifacts
 *.patch
+
+# Local course reference; not part of the portfolio application
+/bonus_solution/
