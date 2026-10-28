@@ -1,6 +1,36 @@
 # Refactoring Project
 
-Use this repository as a **template** for your refactoring project. It walks you through turning a working but messy notebook into clean, reusable Python code: the notebook analyzes King County house sales, and your job is to extract its data cleaning and feature engineering logic into a proper pipeline. Create pull requests in your own copy even if you are working alone, and use them to track your progress.
+We are turning the King County house-price notebook into a simple, object-oriented Python application. The course's core task is to extract data cleaning and feature engineering into a reusable pipeline. Training, evaluation, and model saving stay in the notebook. Our portfolio extension adds a prediction API, tests, and a local Docker run.
+
+**Status: design review.** We have run the notebook and saved its model. The refactored prediction application, its tests, and its Docker setup have not been implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
+
+## Our project at a glance
+
+| Stage | What we build |
+|---|---|
+| Course core | Small Python objects for cleaning and feature engineering, with reusable pipeline steps. |
+| Notebook | Import our preprocessing classes, train and evaluate the complete pipeline, and save it for the app. No training service or endpoint. |
+| Our first application | Load the saved pipeline; accept house details through FastAPI; return a predicted total sale price in US dollars. Add Pydantic validation, logging, unit/integration tests, PR checks, and Docker. |
+| Optional result saving | Save a prediction result before returning it. Off by default; separate from saving the trained model. |
+| Later | House CRUD with a database; optional cloud deployment. |
+
+See [the design and flow diagrams](docs/design.md) for class responsibilities, exact notebook cell references, and the proposed request example. [tasks.md](tasks.md) tracks what is done and what we will build next. We use small branches and PRs to review each piece.
+
+### What information does prediction need?
+
+The saved notebook model expects **19 prepared features**. Our proposed API accepts **17 raw fields** and calculates basement area, the construction/renovation field, and distance features. It needs location and neighbouring-house measurements, not just the five CRUD fields.
+
+For the first demo, we can supply feature-only records from the bundled dataset. For a new house, missing required details mean a validation error. Supporting fewer fields requires training and evaluating a separate model—not inventing values. The full input contract and example are in [the design](docs/design.md#what-if-we-do-not-have-all-the-inputs).
+
+### Quality and traceability
+
+The executed notebook records test **R² = 0.844** for its final model. This is not 84.4% accuracy, a rerun by the agent, or a verified score for the proposed app. The data covers 2014–2015; this is an educational project, not a current valuation service.
+
+We propose minimal request/model/outcome logging and optional result saving, not a separate audit platform. The [design](docs/design.md#a-lightweight-audit-not-another-platform) explains what would be recorded and the privacy limits.
+
+Before loading the model, the app will check its SHA-256 against an approved checksum pinned in code and stop on mismatch. This checks file integrity, not prediction quality or the safety of an untrusted model. See [the model integrity design](docs/design.md#model-integrity-before-loading).
+
+The course setup and reference material follow below. They do not yet provide a command to start our planned prediction app.
 
 ## Learning Objectives
 
