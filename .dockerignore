@@ -1,0 +1,12 @@
+# Allow only installation inputs; never send models, data or secrets to Docker.
+**
+!Dockerfile
+!.dockerignore
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+!src/**
+**/__pycache__/
+**/*.pyc
+**/.env*

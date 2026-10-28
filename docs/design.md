@@ -205,6 +205,20 @@ The optional **save prediction result** step in the diagram can write a JSON Lin
 
 For the local prototype, use a configured writable file location and test the enabled, disabled, and write-failure paths. Container-local files are temporary unless persisted with a volume; do not claim otherwise. A database, audit dashboard, checksum chain, and permanent request storage are unnecessary for Stage 1. Before exposing this publicly, agree on access and retention rather than turning optional saving on automatically.
 
+### Container boundary
+
+Docker packages the existing app; it adds no new service class or training path. The builder installs locked runtime dependencies and the package; the final image runs Uvicorn as a non-root user. A narrow build-context allowlist excludes datasets, notebooks, models, and secrets. We retain the existing dependency list rather than refactoring packaging during this task.
+
+Compose publishes only `127.0.0.1:7003` → container port `8000`, with the approved model mounted read-only. The normal startup path still verifies the code-pinned digest before loading. An HTTP health check reports readiness after startup. No database or custom network is needed for a single service; Compose manages its own default network.
+
+Container smoke tests use the existing temporary model fixture and a test-only startup command that approves its digest in memory. The normal image command is also tested to reject that unapproved fixture. This lets CI check packaging without distributing the production artifact or adding a production checksum override. Image publishing remains a separate task.
+
+The test-only `DockerContainer` object owns a named container's lifetime. A context manager removes it after success, startup failure, or a client timeout. Readiness inspects Docker health rather than bypassing the image health check, and diagnostics retain both output streams. Compose configuration checks cover the localhost port and read-only model mount without requiring a production artifact in CI.
+
+Keep invalid-request validation in the API tests. Container tests focus on packaging, startup, prediction wiring, checksum rejection, and resource cleanup rather than repeating application-level cases.
+
+Build reference: [uv's Docker integration guide](https://docs.astral.sh/uv/guides/integration/docker/).
+
 ## 5. Stage 2 without premature scaffolding
 
 House CRUD is a separate feature: API routes → a house storage component → database. It should not be added inside `PredictionService`.

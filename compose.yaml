@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    ports:
+      - "127.0.0.1:${API_PORT:-7003}:8000"
+    environment:
+      MODEL_PATH: /models/pipeline.skops
+      LOG_LEVEL: INFO
+    volumes:
+      - type: bind
+        source: ${MODEL_FILE:-./model/refactored/king-county-20261028T153712021211Z/pipeline.skops}
+        target: /models/pipeline.skops
+        read_only: true
+        bind:
+          create_host_path: false

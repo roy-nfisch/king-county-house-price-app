@@ -14,8 +14,9 @@ This is a portfolio project developed during the neue fische MLE course. It buil
 - **Prediction API:** FastAPI validates the 17 raw inputs and calls the shared `PredictionService`; the verified model loads once at startup.
 - **Regression tests:** controlled examples check that the refactor preserves the original preprocessing results.
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
+- **Local Docker:** a non-root API image and Compose setup load the approved model from a read-only mount; container smoke checks have a separate CI job.
 
-**Still planned:** Docker and deployment. The API currently runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
+**Still planned:** registry publishing and cloud deployment. The API runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
 
 ## The flow
 
@@ -77,9 +78,9 @@ uv run --locked pytest tests/
 uv build
 ```
 
-Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. The same CI command discovers all three folders.
+Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. Container smoke tests live in `tests/docker/` and skip unless `DOCKER_TEST_IMAGE` names a built image.
 
-CI runs lint, formatting, tests, and the package build on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, deploy, or need API keys or a pre-existing model artifact.
+CI runs lint, formatting, tests, and the package build on pushes and pull requests. A separate `ubuntu-latest` job builds and smoke-tests the Docker image; Python-only checks stay on `ubuntu-slim`. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, publish, deploy, or need API keys or a pre-existing model artifact.
 
 ### What the integration tests connect
 
@@ -102,6 +103,9 @@ These tests reuse the supplied CSV and temporary artifacts. Only the test export
 ```text
 mle-refactoring-project/
 ├── .github/workflows/ci.yml       # Automated development checks
+├── Dockerfile                    # Locked installation and non-root API runtime
+├── .dockerignore                 # Exclude models, data, notebooks and secrets
+├── compose.yaml                  # Local API and read-only model mount
 ├── src/api/
 │   ├── __init__.py
 │   ├── errors.py                 # Safe 422 errors without raw input values
@@ -130,11 +134,14 @@ mle-refactoring-project/
 │   │   ├── test_settings.py      # API configuration and environment checks
 │   │   └── test_traceability.py  # Request IDs, trace metadata and privacy
 │   ├── notebooks/                # Regression, training boundaries and export/reload
+│   ├── docker/test_container.py   # Container lifecycle, health, HTTP and Compose checks
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
 │   ├── design.md                 # Class responsibilities and planned app
 │   └── notebook-baseline.md      # Original rules and comparison details
 ├── data/King_County_House_prices_dataset.csv
+├── model/refactored/king-county-20261028T153712021211Z/
+│   └── pipeline.skops            # Single checksum-approved inference pipeline
 ├── assets/                       # Notebook images
 ├── examples/house.json           # Feature-only record from the supplied CSV
 ├── King-County.ipynb              # Original EDA and modelling reference
@@ -149,7 +156,7 @@ mle-refactoring-project/
 └── LICENSE
 ```
 
-The local `model/` folder is ignored and is not included in a fresh clone. Generated files, virtual environments, and local course references are also excluded.
+Only the versioned `pipeline.skops` shown above is allowed by `.gitignore`; the original `model.bin`, other exports, metadata, and reload examples stay ignored. Generated files, virtual environments, and local course references are also excluded.
 
 ## Prediction inputs and limitations
 
@@ -159,7 +166,11 @@ The data covers **2014–2015**. This is an educational project, not a current p
 
 ### Exported files
 
-The notebook saves `pipeline.skops`, `metadata.json`, and `reload-example.json` under a new timestamped `model/refactored/king-county-…/` directory. Metadata records the input contract, metrics, data checksum, versions, and model SHA-256. The reload example contains three held-out feature-only records and their expected predictions. All exports remain local and ignored; rerunning export with the same directory fails rather than overwriting it.
+The notebook saves `pipeline.skops`, `metadata.json`, and `reload-example.json` under a new timestamped `model/refactored/king-county-…/` directory. Metadata records the input contract, metrics, data checksum, versions, and model SHA-256. The reload example contains three held-out feature-only records and their expected predictions. New exports remain local and ignored unless deliberately approved; rerunning export with the same directory fails rather than overwriting it.
+
+**Why include one trained model?** The 73,355-byte `pipeline.skops` lets a fresh clone run the API and Docker demo without retraining or requesting a separate model download. It contains preprocessing and the fitted estimator, not just prediction weights. The original `model.bin` is a reference artifact and is not used by the API. Keeping one approved version also makes the demo reproducible; an arbitrary new export is not automatically trusted.
+
+**Artifact review:** the approved file matches the SHA-256 pinned in `src/king_county/artifacts.py` and loads with only the two expected custom transformer types. It retains 105 training waterfront coordinate pairs, scaling statistics, and fitted model parameters; it is not anonymised or free of training-derived data. No credential-like fields were found in the archive schema, but that inspection is not a comprehensive security certification. Before public release, confirm permission to redistribute the course dataset and its retained coordinates: the repository has an MIT software license, but no separate dataset source/license notice was found. This remains an open release check in `tasks.md`.
 
 The notebook's fresh-process check verifies the bytes and permits only the two named custom transformer types. It checks serialization, not model quality or release approval. See [the export reference](docs/notebook-baseline.md#model-training-and-export) for details.
 
@@ -167,7 +178,7 @@ The model loader verifies the code-pinned SHA-256 before loading the same bytes 
 
 ## Run the prediction API
 
-The approved local export must be available first. From the project root:
+Use the approved versioned artifact listed above. From the project root:
 
 ```bash
 uv sync --locked
@@ -195,7 +206,40 @@ Technical input limits also reject oversized numbers with **422** before predict
 
 `src/king_county/artifacts.py` pins the reviewed model version, SHA-256, and default export path. `MODEL_PATH` can point to another location containing **the same approved bytes**; `LOG_LEVEL` controls logging. No `.env` file is loaded automatically, and no environment setting overrides the approved checksum.
 
-The model is ignored, so a fresh clone intentionally cannot start the API until an approved artifact is supplied. To create a replacement, run the notebook, review its evaluation/export, then deliberately update `MODEL_VERSION` and `EXPECTED_MODEL_SHA256` in code before launching. A re-export may have a different checksum even with identical predictions. Never calculate and accept a new expected checksum automatically at startup.
+The approved artifact is intended to be versioned alongside the code so a fresh clone can start without training. To create a replacement, run the notebook, review its evaluation/export and redistribution suitability, then deliberately update `MODEL_VERSION`, `EXPECTED_MODEL_SHA256`, the exact `.gitignore` exception, and Compose's default model path together. A re-export may have a different checksum even with identical predictions. Never calculate and accept a new expected checksum automatically at startup. The model stays outside the Docker image and is mounted read-only at runtime.
+
+### Run with Docker Compose
+
+From the project root, with Docker running and the approved local model available:
+
+```bash
+docker compose up --build --wait
+curl http://127.0.0.1:7003/health
+curl -X POST http://127.0.0.1:7003/predict \
+  -H 'Content-Type: application/json' --data-binary @examples/house.json
+docker compose logs api
+# Stop this project's container when finished:
+docker compose down
+```
+
+Open [Docker API docs](http://127.0.0.1:7003/docs). Host port **7003** forwards to **8000 inside the container**; the API listens on all container interfaces, but Compose publishes it only on localhost. If 7003 is busy, use `API_PORT=7004 docker compose up --build --wait` and change the curl/browser port accordingly.
+
+The non-root runtime contains the installed package and locked runtime dependencies, not the CSV, notebooks, tests, or model. Compose mounts the approved artifact read-only at `/models/pipeline.skops`; no database, training service, or API key is needed. The health check succeeds only after startup loads the model. A missing host file fails the mount; changed/unapproved bytes fail application startup. Check `docker compose logs api` if startup fails.
+
+To relocate the same approved model, set `MODEL_FILE=/absolute/path/pipeline.skops` before the Compose command. This changes only the host file location, **not** its trusted checksum. The default image command performs the usual code-pinned verification; no new checksum environment override is provided.
+
+To run container tests locally:
+
+```bash
+docker build -t king-county-api:test .
+DOCKER_TEST_IMAGE=king-county-api:test uv run --locked pytest tests/docker/
+```
+
+These tests reuse the existing temporary model fixture. The healthy test process explicitly approves that fixture's digest **in memory through a test-only Python startup command**; it does not change the image, production code, or normal entrypoint. Another test verifies that the normal command rejects this unapproved model.
+
+A small `DockerContainer` test helper owns creation and cleanup, including client timeouts and startup failures. Readiness requires Docker's actual health status; failures include both stdout and stderr. Checks also pin Compose's localhost port and read-only model mount with missing-file protection. Helper regression tests run without Docker; real-container and Compose checks require `DOCKER_TEST_IMAGE`. This checks packaging and HTTP wiring, not production model quality or deployment readiness.
+
+The Docker test file has 13 cases: seven helper regressions, three real-container checks (prediction, checksum rejection, timeout cleanup), and three Compose configuration checks. Invalid-request behaviour stays in the existing API tests instead of being repeated in Docker.
 
 ### Prediction traceability
 
