@@ -2,6 +2,8 @@
 
 **Status: design approved; T04 foundation complete.** This document describes the agreed application design, not a completed prediction application. Training, evaluation, and model saving stay in the notebook.
 
+T05's [baseline reference](notebook-baseline.md) records exact preprocessing rules, controlled outputs, and differences between the working copy and the original.
+
 ## 1. What the notebook currently does
 
 The notebook loads 21,597 house-sale records, cleans them, creates features, trains several regressions, evaluates them, and saves the final sklearn pipeline. Its prediction target is **total sale price in US dollars**, not the exploratory `sqft_price` ratio.

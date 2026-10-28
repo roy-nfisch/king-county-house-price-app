@@ -19,13 +19,20 @@ Status rules: **To do** = not started; **In progress** = active or waiting for r
     - [x] Verify a non-editable installation, tests, lint, formatting, and package build from an isolated source copy.
     - [x] Confirm GitHub Actions passed for [PR #2](https://github.com/roy-nfisch/mle-refactoring-project/pull/2).
 
+- [x] **T05 — Capture a repeatable notebook baseline.** Done: the working preprocessing notebook, fixed expected outputs, rules, settings, and metric provenance are recorded. Controlled comparisons pass for both notebooks and detect a deliberate output change. Intentional later changes are documented separately.
+    - [x] Create the working copy without modifying the original notebook or saved model.
+    - [x] Record rules, settings, metric provenance, and intended differences in [the baseline reference](docs/notebook-baseline.md).
+    - [x] Verify controlled snapshots, feature order, and row alignment for both notebooks; a deliberate output change was detected.
+    - [x] Run every working-copy code cell on the full CSV: 21,596 rows, 19 features, 146 waterfront references, no missing prepared values. All 16 tests, Ruff checks, and the package build passed.
+
+The original notebook, saved model, and CSV checksums are unchanged. T05 is locally complete; its changes are not committed or pushed, and remote CI has not run for this branch yet.
+
 ## In progress
 
-No task currently in progress. T05 is next.
+No task currently in progress. T06 is next, after reviewing the T05 baseline.
 
 ## To do
 
-- [ ] **T05 — Capture a repeatable notebook baseline.** Keep the original notebook and saved model untouched. Create the working notebook copy requested by the course checklist and keep its relevant cleaning and feature-engineering steps. Record input columns, cleaning rules, split settings, reference coordinates, model settings, and metrics. Done when a controlled comparison can detect a changed transformation; differences from the notebook are documented separately.
 - [ ] **T06 — Extract cleaning into a small class.** Rebuild basement area, fill the specified missing values, and derive the construction/renovation year field. Make the training-row exclusion explicit; do not silently drop prediction requests. Done when unit tests check values, row alignment, missing values, and input immutability.
 - [ ] **T07 — Extract feature creation into a fitted class.** Calculate the two distance features and return model columns in a fixed order. Learn waterfront reference locations from training data only for the app version. Done when the formula matches controlled notebook examples and new requests reuse stored references without fitting again.
 - [ ] **T08 — Connect the notebook to the reusable pipeline and export the model.** In the working notebook, import our preprocessing classes and join them with the existing sklearn steps. Keep splitting, training/tuning, evaluation, and saving there; do not create a training service. Split before fitting dataset-dependent features, then save the complete fitted pipeline plus metadata to a new location and calculate its SHA-256 checksum for review. Done when a fresh process can reload it and reproduce predictions without notebook variables or reading the training CSV during a request. Do not overwrite our existing model.

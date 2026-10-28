@@ -2,7 +2,7 @@
 
 We are turning the King County house-price notebook into a simple, object-oriented Python application. The course's core task is to extract data cleaning and feature engineering into a reusable pipeline. Training, evaluation, and model saving stay in the notebook. Our portfolio extension adds a prediction API, tests, and a local Docker run.
 
-**Status: foundation complete (T04).** The design is approved. The installable Python package, validated logging settings, foundation tests, and CI workflow are in place; GitHub checks passed on `ubuntu-slim`. Next is T05: capture the notebook baseline. Cleaning/feature classes, the prediction API, model verification, and the app's Docker setup are not implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
+**Status: notebook baseline complete locally (T05).** T04 is merged, with GitHub checks passing on `ubuntu-slim`. T05's working notebook and controlled preprocessing snapshot pass local checks; see [the baseline reference](docs/notebook-baseline.md). Next is T06: extract cleaning into Python. Cleaning/feature classes, the prediction API, model verification, and the app's Docker setup are not implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
 
 ## Our project at a glance
 
@@ -51,7 +51,7 @@ By the end of this repository, you should be able to:
 
 ## Repository layout
 
-Main files and folders at T04; folder contents are collapsed where not relevant to the foundation:
+Main files and folders at T05; folder contents are collapsed where not relevant:
 
 ```text
 mle-refactoring-project/
@@ -66,15 +66,20 @@ mle-refactoring-project/
 ├── tests/
 │   ├── test_settings.py           # Defaults, allowed levels and invalid settings
 │   ├── test_logging_config.py     # Logging configuration unit test
-│   └── test_package.py            # Installed imports and real console logging
+│   ├── test_package.py            # Installed imports and real console logging
+│   ├── test_notebook_baseline.py  # Original/working preprocessing parity
+│   └── fixtures/
+│       └── notebook_baseline.json # Fixed derived values, not duplicate CSV data
 ├── docs/
-│   └── design.md                 # Agreed design, notebook mapping and diagrams
+│   ├── design.md                 # Agreed design, notebook mapping and diagrams
+│   └── notebook-baseline.md      # Rules, settings and baseline provenance
 ├── data/
 │   └── King_County_House_prices_dataset.csv
 ├── assets/                       # Original notebook images
 ├── bonus_solution/               # Separate course CRUD reference, unchanged
 ├── model/                        # Local saved model; ignored by Git
 ├── King-County.ipynb              # Training, evaluation and model saving
+├── King-County-refactored.ipynb    # Working preprocessing copy for extraction
 ├── .gitignore                    # Excludes local/generated files
 ├── .python-version               # Existing Python 3.13 version rule
 ├── pyproject.toml                # Dependencies, packaging, pytest and Ruff
