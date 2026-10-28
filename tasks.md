@@ -13,7 +13,7 @@ Status rules: **To do** = not started; **In progress** = active or waiting for r
 
 ## In progress
 
-- [ ] **T03 — Agree on the design.** Review [the proposed design](docs/design.md), class responsibilities, prediction inputs, and the notebook-to-app differences. Done when we agree on the design; implementation must wait for this review.
+- [x] **T03 — Agree on the design.** Review [the proposed design](docs/design.md), class responsibilities, prediction inputs, and the notebook-to-app differences. Done when we agree on the design; implementation must wait for this review.
 
 ## To do
 
