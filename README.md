@@ -4,9 +4,9 @@
 [![Tests: unit, integration, contract](https://img.shields.io/badge/tests-unit%20%7C%20integration%20%7C%20contract-blue)](#test-categories-and-ci-stages)
 [![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](#run-locally)
 [![Docker: local](https://img.shields.io/badge/Docker-local-2496ED?logo=docker&logoColor=white)](#run-with-docker-compose)
-[![GHCR: publishing prepared](https://img.shields.io/badge/GHCR-publishing%20prepared-lightgrey)](#publish-to-github-container-registry)
+[![GHCR: private image](https://img.shields.io/badge/GHCR-private%20image-blue)](#run-the-published-image)
 
-We are refactoring a house-price notebook into a small, object-oriented Python project. The goal is to make its preprocessing reusable, testable, and eventually usable by a prediction application—not to build another training service.
+We refactored a house-price notebook into a small, object-oriented Python package and a working prediction API. Preprocessing is reusable and tested; training stays in the notebook, not in a training service. See [how we moved from notebook to app](docs/notebook-to-app.md).
 
 This is a portfolio project developed during the neue fische MLE course. It builds on the supplied King County notebook and dataset, with our own Python package, validation, tests, and CI.
 
@@ -22,7 +22,7 @@ This is a portfolio project developed during the neue fische MLE course. It buil
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 - **Local Docker:** a non-root API image and Compose setup load the approved model from a read-only mount; container smoke checks have a separate CI job.
 
-**Prepared, not yet run:** manual GHCR publishing. Cloud deployment remains deferred. The API runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
+**Published:** a verified private GHCR image, tagged `2026.10.29` and `latest`. [Run the published image](#run-the-published-image) with the approved model mounted read-only. Publishing did not deploy the API; cloud deployment remains deferred. The API has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
 
 ## The flow
 
@@ -162,6 +162,7 @@ mle-refactoring-project/
 │   ├── workflows/                # Offline registry checks and smoke-check failures
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
+│   ├── notebook-to-app.md         # Project journey, decisions, checks and limitations
 │   ├── design.md                 # Class responsibilities and planned app
 │   └── notebook-baseline.md      # Original rules and comparison details
 ├── data/King_County_House_prices_dataset.csv
@@ -270,7 +271,9 @@ The Docker test file has 13 cases: seven helper regressions, three real-containe
 
 ### Publish to GitHub Container Registry
 
-The manual **Publish API image** workflow is prepared but has not been run. Once reviewed and merged to `main`, open **Actions → Publish API image → Run workflow**, select `main`, and enter a new version using `YYYY.MM.DD`, such as `2026.10.28`. For another release on the same date, append `.1`, `.2`, etc., such as `2026.10.28.1`. Dates must be real calendar dates with two-digit months/days, and an optional suffix must be a positive integer without leading zeros. Pushes and pull requests do not publish images, and a manual run from another branch is rejected.
+The first [publication run](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40786740479) passed from `main` at commit `f213617`. It published `2026.10.29`, `sha-f2136173d94002907617c6e40e38eceaf6a5a025`, and `latest`. The package is now **private**, verified in its settings. See the [image page](https://github.com/roy-nfisch/mle-refactoring-project/pkgs/container/mle-refactoring-project) while signed into an account with access. Health, prediction, digest pull, and image identity checks passed; no API was deployed.
+
+For a future release, open **Actions → Publish API image → Run workflow**, select `main`, and enter a new version using `YYYY.MM.DD`. For another release on the same date, append `.1`, `.2`, etc. Dates must be real calendar dates with two-digit months/days, and an optional suffix must be a positive integer without leading zeros. Pushes and pull requests do not publish images, and a manual run from another branch is rejected.
 
 The workflow builds and tests the image, transfers that exact image between jobs, and checks its image ID before publishing. Only the publishing job has `packages: write`; authentication uses GitHub's short-lived `GITHUB_TOKEN`, not a personal token stored in this repository. The version is the image tag: `ghcr.io/roy-nfisch/mle-refactoring-project:2026.10.28` (or the selected date/suffix). It also publishes a `sha-<full-commit>` tag and updates `latest` only after post-publish health and prediction checks pass. `latest` means the last successfully verified manual publication, not necessarily the highest date tag. The workflow does not change package visibility. New GHCR packages default to private; review package access settings before sharing, even when the repository is public. See [GitHub's registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
 
@@ -278,16 +281,53 @@ Before pushing, an authenticated registry check rejects an existing version tag.
 
 After pushing, it pulls by registry digest and checks health and prediction with the approved model mounted read-only. HTTP checks have a five-second connection timeout and a 15-second total timeout per request. The run summary records the digest reference. Publishing creates a downloadable image, not a hosted API. If post-push verification fails, the workflow fails but does not automatically delete already-pushed tags. Choose a new version for the next attempt rather than overwriting an existing tag.
 
-For later use, replace `DIGEST_FROM_RUN` below with the recorded `sha256:…` value. Private images require local Docker authentication first. Choose new version tags for releases; tags can move, while the recorded digest identifies the exact image. The initial workflow builds Linux amd64 only; an ARM Mac needs Docker's amd64 emulation.
+### Run the published image
+
+You need Docker running, a checkout of this repository with the approved model,
+and a GitHub account that can read the private package. No local Python install
+or model retraining is needed. Run these commands from the project root.
+
+**1. Log in once.** For a local private-image download, use a GitHub personal
+access token **(classic)** with `read:packages`, belonging to an account with
+package access. Enter your GitHub username below; at the password prompt, paste
+the token, **not your GitHub password**. Never put it in the README or commit it.
+The publishing workflow instead uses its automatic `GITHUB_TOKEN`; you do not
+need a personal token for workflow publication.
 
 ```bash
-docker pull ghcr.io/roy-nfisch/mle-refactoring-project@DIGEST_FROM_RUN
-docker run --rm --platform linux/amd64 -p 127.0.0.1:7003:8000 \
-  --mount "type=bind,source=$(pwd)/model/versions/king-county-20261028T153712021211Z/pipeline.skops,target=/models/pipeline.skops,readonly" \
-  ghcr.io/roy-nfisch/mle-refactoring-project@DIGEST_FROM_RUN
+docker login ghcr.io --username YOUR_GITHUB_USERNAME
 ```
 
-Keep the model outside the image. Dataset/model redistribution permission remains an open review item; do not treat this workflow as publication clearance. The registry itself and a published-image pull cannot be verified until an explicitly approved publishing run.
+**2. Pull and start the verified image.** This digest pins the exact first image;
+the `2026.10.29` and `latest` tags currently point to it. The image is Linux amd64,
+so an ARM Mac uses Docker's amd64 emulation. The model stays outside the image.
+
+```bash
+KING_COUNTY_IMAGE=ghcr.io/roy-nfisch/mle-refactoring-project@sha256:dd2e189dd437878d3a09f7a18e89cd0b063126a0721f97b3641894c444327311
+docker pull --platform linux/amd64 "$KING_COUNTY_IMAGE"
+docker run --rm --platform linux/amd64 -p 127.0.0.1:7003:8000 \
+  --mount "type=bind,source=$(pwd)/model/versions/king-county-20261028T153712021211Z/pipeline.skops,target=/models/pipeline.skops,readonly" \
+  "$KING_COUNTY_IMAGE"
+```
+
+**3. Check it in another terminal**, also from the project root, once startup
+finishes. Keep the first terminal running. Open <http://127.0.0.1:7003/docs> or:
+
+```bash
+curl --fail http://127.0.0.1:7003/health
+curl --fail http://127.0.0.1:7003/predict \
+  -H 'Content-Type: application/json' --data-binary @examples/house.json
+```
+
+Prediction returns `predicted_price`, `currency`, and `model_version`. Press
+Ctrl+C in the first terminal to stop; `--rm` removes that container. If port 7003
+is occupied, change only the host port (for example, `7004:8000`) and use that
+port in the URLs. A missing model or checksum mismatch stops startup; do not
+bypass the approval check. `denied`/`unauthorized` means the login, token scope,
+or package access needs checking. See [GitHub's registry authentication guide](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
+
+Dataset/model redistribution permission remains an open review item. Private
+runtime publication does not clear the separate public-release review.
 
 ### Prediction traceability
 
@@ -320,6 +360,7 @@ Saving prediction results is still deferred. Authentication, Docker, and deploym
 
 ## Project notes
 
+- [Notebook-to-app walkthrough](docs/notebook-to-app.md): what we changed, how the objects fit, and what we learned.
 - [Design and diagrams](docs/design.md): responsibilities, notebook mapping, and prediction flow.
 - [Baseline reference](docs/notebook-baseline.md): preserved rules and regression checks.
 - [Task list](tasks.md): completed work and next steps.
