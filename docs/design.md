@@ -1,6 +1,6 @@
 # King County: notebook to application
 
-**Status: design approved.** This document describes the agreed application design, not a completed prediction application. Training, evaluation, and model saving stay in the notebook. Track implementation progress in [tasks](../tasks.md).
+**Status: prediction app implemented.** This document records the agreed design and its notebook mapping. Training, evaluation, and model saving stay in the notebook. For the shorter project story, read the [notebook-to-app walkthrough](notebook-to-app.md); track remaining work in [tasks](../tasks.md).
 
 The [baseline reference](notebook-baseline.md) records exact preprocessing rules, controlled outputs, and differences between the working copy and the original.
 
@@ -19,7 +19,7 @@ The notebook loads 21,597 house-sale records, cleans them, creates features, tra
 
 An earlier review recorded adjusted R² values of **0.43**, **0.48**, and **0.75** for the earlier models, and ordinary test R² **0.844** for the final model. The notebook's saved outputs are now cleared; these results have not been newly reproduced. Adjusted and ordinary R² are different measures; neither means "84.4% of predictions are correct."
 
-### What we inspected in the artifact
+### What we inspected in the legacy artifact
 
 The local artifact exists and is 69,583 bytes. Its JSON schema was read without deserialising Python objects. It describes polynomial expansion, input scaling, and an ElasticNet regressor with target scaling. The stored sklearn version is 1.9.0.
 
@@ -34,7 +34,7 @@ sqft_lot15, last_known_change, center_distance, water_distance
 
 It does not contain the earlier cleaning or waterfront reference-building steps. Loading this legacy file alone will not turn raw house details into a prediction. It remains a reference; the API uses the complete refactored pipeline exported by the working notebook instead.
 
-`model/` is ignored by Git. A fresh clone must supply the reviewed export, or train/export and deliberately approve a replacement in code. The README documents this requirement. A missing or changed model stops API startup; Docker packaging remains separate work.
+The repository includes one approved versioned `pipeline.skops` (about 72 KB), containing the complete refactored pipeline. Other exports and the legacy `model.bin` stay ignored. A fresh clone can use that approved file without retraining. Loading a different export requires deliberate code approval; a missing or changed model stops API startup. The Docker image excludes the model and loads it from a read-only mount. See the [README](../README.md#exported-files) for artifact and redistribution limitations.
 
 ## 2. The proposed pattern: small objects working together
 

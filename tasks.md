@@ -98,19 +98,24 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Inspect the approved artifact (about 72 KB): its SHA-256 matches the code pin, the verified loader accepts only the expected custom types, and fitted state includes 105 waterfront coordinate pairs. Keep versioned exports under `model/versions/`; allow only the approved version's `pipeline.skops` in `.gitignore`. Keep legacy/experimental models and sidecars ignored. Document why one model belongs with the runnable demo; keep it outside the image.
     - [x] Review, pass CI, and merge PRs #9 and #10. The dataset/model redistribution check remains open under T13, not silently approved by this technical completion.
 
-## In progress
-
-- [ ] **T11a — Publish the Docker image to a registry.** Use GitHub Container Registry. The manual workflow must build/test before publishing and verify a digest pull with health/prediction afterwards. Publishing does not deploy the application.
+- [x] **T11a — Publish the Docker image to a registry.** First approved publication passed from `main` (`f213617`), tag `2026.10.29`, with commit and `latest` tags. Both workflow jobs passed. The package is now private; no API was deployed.
     - [x] Prepare a main-only manual workflow with `YYYY.MM.DD[.N]` version tags, commit tags, and `latest` updated only after post-publish health/prediction checks. Validate real calendar dates, transfer the tested image, pin actions, and limit package-write permission to the publishing job. Use `GITHUB_TOKEN`; keep the model out of the image. Do not change registry visibility automatically.
     - [x] Document manual execution, default private package visibility, digest-based pulling, model mounting, amd64 architecture, and failure/cleanup behavior.
     - [x] Reject existing version tags before any push; fail closed on registry/authentication/network errors. Bound smoke-check HTTP requests and add offline regression tests for registry responses, workflow ordering, and timeout failures. Only `latest` intentionally moves between releases; commit tags identify the source revision.
     - [x] Pass all 463 tests, including 27 offline publishing regressions and the local Docker tests. Lint, formatting, package build, Compose validation, and Bash syntax checks pass. Earlier preparation also verified ten version-input cases, non-main rejection, and image save/load identity. Workflow lint passes with only its outdated Ubuntu 26.04 label inventory excluded; that runner already passed PR #10 CI. No registry login, push, or workflow dispatch was performed.
-    - [ ] Review before committing. No image published and no commit made for T11a; actual GHCR authentication, artifact transfer between hosted jobs, and digest pulling remain unverified until an approved run.
-    - [ ] With explicit approval, run the merged workflow, review package visibility, and verify the published digest pull, health, and prediction. Only then mark T11a complete.
+    - [x] Review and merge PR #11 and the README badges in PR #12.
+    - [x] With explicit approval, run [publication 40786740479](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40786740479). Hosted artifact transfer, GHCR authentication, digest pull, approved-model health/prediction, and latest promotion passed. Digest: `sha256:dd2e189dd437878d3a09f7a18e89cd0b063126a0721f97b3641894c444327311`.
+    - [x] Verify visibility in GitHub settings. The package initially displayed Public despite the documented private default; change it to Private and confirm the resulting setting. No model is included in the image. Local CLI package metadata remains unavailable without `read:packages`; the signed-in browser supplied the visibility check.
+
+## In progress
+
+- [ ] **T12 — Prepare the portfolio explanation.** Started on `feature/portfolio-walkthrough`. Add a short notebook-to-app walkthrough and keep the README run instructions accurate. Explain the original workflow, class responsibilities, input/output example, test categories, measured results, challenges, and limitations. Do not describe R² as percentage accuracy.
+    - [x] Draft `docs/notebook-to-app.md`, link it from the README and file tree, and distinguish the course core from our prediction extension. Correct stale artifact/app status in the design document.
+    - [x] Add private registry login, exact digest pull, read-only model mount, localhost port, example prediction, troubleshooting, and stop instructions.
+    - [ ] Review the walkthrough and private-image instructions from a fresh-checkout perspective. The workflow ran the image successfully; local private pulling still requires a separately authorised account/token with `read:packages`.
 
 ## To do
 
-- [ ] **T12 — Prepare the portfolio explanation.** Update the README and a short notebook-to-app walkthrough. Explain the original workflow, classes, input/output example, tests, Docker commands, observed metrics, and limitations. Answer the course reflection questions: what steps we took, what challenges we faced, and what we would change with more time. Done when another person can follow the steps from a clean checkout. Do not describe R² as percentage accuracy.
 - [ ] **T13 — Final review and public repository check.** Use small feature branches and PRs. Check the public repository for secrets, generated files, misleading claims, and reproducibility gaps. Done when CI passes and we approve the working application and documentation.
     - [ ] Before public release, confirm redistribution permission for the course dataset and the model's retained waterfront coordinates. The MIT software license alone does not establish the dataset's licensing; no separate dataset source/license notice was found. Do not treat technical checksum approval as redistribution clearance.
 
@@ -127,5 +132,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
 - Methods/functions and displayed code blocks stay within 50 lines. Do not hide complexity in oversized expressions to meet the limit.
 - Use Pydantic at boundaries, useful logging, and explicit runtime errors. Use readable assertions and appropriate comparison helpers in tests.
 - Keep changes small and reviewable. Do not commit, push, open PRs, or deploy without the relevant approval.
+- After each task, run an independent audit with a different model from the implementer. Check task scope, correctness, security, tests, and simple OOD; record the reviewer/model and findings, address them, and rerun relevant checks before marking the task complete. If a different model is unavailable, report that limitation rather than claiming an independent audit.
+- Challenge assumptions and generated output throughout the task. Use plan reviews, evidence, and feedback on small changes to steer the implementation while it is in progress, not only at the final review.
 - Before a PR, update the relevant task checkboxes and status sections. Only mark a task done when its completion checks have passed; state any checks still awaiting GitHub CI.
 - This task file tracks progress; the design document explains decisions. Avoid repeating the course instructions in both.
