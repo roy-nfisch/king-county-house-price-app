@@ -1,5 +1,11 @@
 # King County: From Notebook to Python
 
+[![CI on main](https://github.com/roy-nfisch/mle-refactoring-project/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/roy-nfisch/mle-refactoring-project/actions/workflows/ci.yml?query=branch%3Amain)
+[![Tests: unit, integration, contract](https://img.shields.io/badge/tests-unit%20%7C%20integration%20%7C%20contract-blue)](#test-categories-and-ci-stages)
+[![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](#run-locally)
+[![Docker: local](https://img.shields.io/badge/Docker-local-2496ED?logo=docker&logoColor=white)](#run-with-docker-compose)
+[![GHCR: publishing prepared](https://img.shields.io/badge/GHCR-publishing%20prepared-lightgrey)](#publish-to-github-container-registry)
+
 We are refactoring a house-price notebook into a small, object-oriented Python project. The goal is to make its preprocessing reusable, testable, and eventually usable by a prediction application—not to build another training service.
 
 This is a portfolio project developed during the neue fische MLE course. It builds on the supplied King County notebook and dataset, with our own Python package, validation, tests, and CI.
