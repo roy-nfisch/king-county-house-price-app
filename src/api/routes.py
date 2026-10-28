@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from api.request_validation import validate_unique_json_keys
 from king_county.prediction import PredictionError, PredictionService
 from king_county.schemas import HouseInput, PredictionResult
 
@@ -32,7 +33,11 @@ def health(service: Service) -> HealthResult:
     return HealthResult(model_version=service.model_version)
 
 
-@router.post("/predict", response_model=PredictionResult)
+@router.post(
+    "/predict",
+    response_model=PredictionResult,
+    dependencies=[Depends(validate_unique_json_keys)],
+)
 def predict(house: HouseInput, service: Service) -> PredictionResult:
     """Return a total price, 422 for invalid input, or 500 for model failure."""
     try:

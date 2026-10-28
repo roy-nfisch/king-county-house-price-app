@@ -90,6 +90,7 @@ mle-refactoring-project/
 │   ├── __init__.py
 │   ├── errors.py                 # Safe 422 errors without raw input values
 │   ├── main.py                   # App factory and one-time startup loading
+│   ├── request_validation.py     # Reject duplicate JSON keys before prediction
 │   ├── routes.py                 # Predict, readiness and error responses
 │   └── settings.py               # Model path and logging configuration
 ├── src/king_county/
@@ -163,6 +164,8 @@ curl -X POST http://127.0.0.1:7002/predict \
 The response contains `predicted_price`, `currency` (`USD`), and `model_version`. `/health` reports readiness after model loading, not prediction quality. Missing/invalid fields return **422**; model/output failures return **500**. Non-finite or non-positive prices fail explicitly rather than being clamped.
 
 ZIP codes must be five-digit strings; the service converts them to the model's numeric feature. Numeric fields reject strings and booleans. Years/counts are whole numbers, areas and coordinates are finite, and above-ground area cannot exceed living area. The keys `view`, `waterfront`, and `yr_renovated` are required but may be `null`, following the notebook's cleaning rules. There is no address lookup or guarantee that any in-range location is suitable for this historical model.
+
+Duplicate JSON keys return **422**, even when their values are identical or their names use equivalent Unicode escapes. Raw-body validation checks this before prediction, since normal dictionary parsing would silently keep only the last occurrence.
 
 ### Supply or deliberately replace the model
 

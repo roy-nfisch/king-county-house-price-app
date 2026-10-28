@@ -78,6 +78,43 @@ def test_validation_errors_do_not_echo_input_records(client, house_payload):
     assert all(set(error) == {"type", "loc", "msg"} for error in errors)
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [("bedrooms", 3), ("bedrooms", 8), (r"\u0062edrooms", 8)],
+    ids=["same-value", "conflicting-value", "escaped-key"],
+)
+def test_duplicate_json_keys_return_422(client, house_payload, key, value):
+    """Reject repeated decoded field names instead of silently taking the last."""
+    body = json.dumps(house_payload)[:-1] + f', "{key}": {value}}}'
+    response = client.post(
+        "/predict",
+        content=body,
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+
+
+def test_duplicate_json_keys_never_reach_prediction(client, house_payload):
+    """Ambiguous input is blocked before the service is called."""
+    body = json.dumps(house_payload)[:-1] + ', "bedrooms": 8}'
+    with patch.object(PredictionService, "predict") as predict:
+        client.post(
+            "/predict", content=body, headers={"Content-Type": "application/json"}
+        )
+    predict.assert_not_called()
+
+
+@pytest.mark.parametrize("body", ['{"bedrooms":', "", "[]"])
+def test_malformed_or_non_object_json_returns_422(client, body):
+    """Raw-key validation must not turn other invalid-body cases into 500s."""
+    response = client.post(
+        "/predict",
+        content=body,
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+
+
 def test_startup_loads_once_for_all_requests(approved_artifact, house_payload):
     """One worker reuses one verified pipeline rather than loading per request."""
     with patch.object(

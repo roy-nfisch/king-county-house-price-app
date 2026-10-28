@@ -66,7 +66,8 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Require all 17 raw keys, implement explicit numeric/coordinate/area/null rules, convert ZIP strings to the numeric model feature, and reject unusable price outputs.
     - [x] Provide `examples/house.json`, startup configuration, and instructions for supplying or deliberately approving a replacement model. Package both `king_county` and `api`.
     - [x] Smoke-test the real reviewed artifact through TestClient and live Uvicorn on localhost:7002; readiness/docs/prediction succeeded, missing ZIP returned 422, and the temporary server was stopped.
-    - [x] Pass 322 tests, Ruff, formatting, package build, installed-package imports, wheel contents, documentation links, protected checksums, and 50-line checks. Fix the non-finite HTTP-input error boundary so invalid numbers return 422 without echoing raw inputs.
+    - [x] Pass 329 tests, Ruff, formatting, package build, installed-package imports, wheel contents, documentation links, protected checksums, and 50-line checks. Fix the non-finite HTTP-input error boundary so invalid numbers return 422 without echoing raw inputs.
+    - [x] Reject duplicate raw JSON keys before prediction, including identical/conflicting values and escaped names; cover malformed/empty/non-object bodies and verify prediction is not called.
     - [ ] Review before PR and confirm GitHub CI before merge. Keep request traceability, result saving, Docker, and deployment outside this change.
 
 ## To do
