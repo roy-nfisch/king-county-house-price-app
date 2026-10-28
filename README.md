@@ -16,7 +16,7 @@ This is a portfolio project developed during the neue fische MLE course. It buil
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 - **Local Docker:** a non-root API image and Compose setup load the approved model from a read-only mount; container smoke checks have a separate CI job.
 
-**Still planned:** registry publishing and cloud deployment. The API runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
+**Prepared, not yet run:** manual GHCR publishing. Cloud deployment remains deferred. The API runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
 
 ## The flow
 
@@ -94,7 +94,7 @@ CI runs lint/format/build first. Unit, non-Docker integration, and contract jobs
 
 The development-only `pytest-xdist` plugin runs non-Docker integration tests with two worker processes. `--dist loadfile` keeps each file on one worker, so the notebook's module-scoped export fixture is not repeated across workers. Unit and contract cases remain serial within their own jobs: worker startup did not improve the measured unit run, and the contract checks share one file. Docker cases also remain serial within their job to keep resource use predictable. Use `-n 0` to debug an integration test without workers. Worker counts are explicit rather than automatically consuming every available CPU. See the [pytest-xdist distribution guide](https://pytest-xdist.readthedocs.io/en/stable/distribution.html).
 
-Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. Container smoke tests live in `tests/docker/` and skip unless `DOCKER_TEST_IMAGE` names a built image.
+Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. Container smoke tests live in `tests/docker/` and skip unless `DOCKER_TEST_IMAGE` names a built image. `tests/workflows/` covers release checks offline: mocked registry checks are unit tests, and the smoke-check shell with Docker/curl stand-ins is integration tested. These tests never log in or publish.
 
 CI runs these stages on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, publish, deploy, or need API keys or a pre-existing model artifact.
 
@@ -119,6 +119,8 @@ These tests reuse the supplied CSV and temporary artifacts. Only the test export
 ```text
 mle-refactoring-project/
 ├── .github/workflows/ci.yml       # Automated development checks
+├── .github/workflows/publish-image.yml # Manual GHCR publishing after image tests
+├── .github/scripts/check_image_version.py # Reject reused tags and registry errors
 ├── Dockerfile                    # Locked installation and non-root API runtime
 ├── .dockerignore                 # Exclude models, data, notebooks and secrets
 ├── compose.yaml                  # Local API and read-only model mount
@@ -151,6 +153,7 @@ mle-refactoring-project/
 │   │   └── test_traceability.py  # Request IDs, trace metadata and privacy
 │   ├── notebooks/                # Regression, training boundaries and export/reload
 │   ├── docker/test_container.py   # Container lifecycle, health, HTTP and Compose checks
+│   ├── workflows/                # Offline registry checks and smoke-check failures
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
 │   ├── design.md                 # Class responsibilities and planned app
@@ -258,6 +261,27 @@ These tests reuse the existing temporary model fixture. The healthy test process
 A small `DockerContainer` test helper owns creation and cleanup, including client timeouts and startup failures. Readiness requires Docker's actual health status; failures include both stdout and stderr. Checks also pin Compose's localhost port and read-only model mount with missing-file protection. Helper regression tests run without Docker; real-container and Compose checks require `DOCKER_TEST_IMAGE`. This checks packaging and HTTP wiring, not production model quality or deployment readiness.
 
 The Docker test file has 13 cases: seven helper regressions, three real-container checks (prediction, checksum rejection, timeout cleanup), and three Compose configuration checks. Invalid-request behaviour stays in the existing API tests instead of being repeated in Docker.
+
+### Publish to GitHub Container Registry
+
+The manual **Publish API image** workflow is prepared but has not been run. Once reviewed and merged to `main`, open **Actions → Publish API image → Run workflow**, select `main`, and enter a new version using `YYYY.MM.DD`, such as `2026.10.28`. For another release on the same date, append `.1`, `.2`, etc., such as `2026.10.28.1`. Dates must be real calendar dates with two-digit months/days, and an optional suffix must be a positive integer without leading zeros. Pushes and pull requests do not publish images, and a manual run from another branch is rejected.
+
+The workflow builds and tests the image, transfers that exact image between jobs, and checks its image ID before publishing. Only the publishing job has `packages: write`; authentication uses GitHub's short-lived `GITHUB_TOKEN`, not a personal token stored in this repository. The version is the image tag: `ghcr.io/roy-nfisch/mle-refactoring-project:2026.10.28` (or the selected date/suffix). It also publishes a `sha-<full-commit>` tag and updates `latest` only after post-publish health and prediction checks pass. `latest` means the last successfully verified manual publication, not necessarily the highest date tag. The workflow does not change package visibility. New GHCR packages default to private; review package access settings before sharing, even when the repository is public. See [GitHub's registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+
+Before pushing, an authenticated registry check rejects an existing version tag. Only an explicit missing-manifest/name response permits publication; authentication, network, malformed-response, and other registry errors stop the job. Workflow runs are serialized, but this is not registry-enforced immutability: someone publishing outside this workflow could still change a tag.
+
+After pushing, it pulls by registry digest and checks health and prediction with the approved model mounted read-only. HTTP checks have a five-second connection timeout and a 15-second total timeout per request. The run summary records the digest reference. Publishing creates a downloadable image, not a hosted API. If post-push verification fails, the workflow fails but does not automatically delete already-pushed tags. Choose a new version for the next attempt rather than overwriting an existing tag.
+
+For later use, replace `DIGEST_FROM_RUN` below with the recorded `sha256:…` value. Private images require local Docker authentication first. Choose new version tags for releases; tags can move, while the recorded digest identifies the exact image. The initial workflow builds Linux amd64 only; an ARM Mac needs Docker's amd64 emulation.
+
+```bash
+docker pull ghcr.io/roy-nfisch/mle-refactoring-project@DIGEST_FROM_RUN
+docker run --rm --platform linux/amd64 -p 127.0.0.1:7003:8000 \
+  --mount "type=bind,source=$(pwd)/model/versions/king-county-20261028T153712021211Z/pipeline.skops,target=/models/pipeline.skops,readonly" \
+  ghcr.io/roy-nfisch/mle-refactoring-project@DIGEST_FROM_RUN
+```
+
+Keep the model outside the image. Dataset/model redistribution permission remains an open review item; do not treat this workflow as publication clearance. The registry itself and a published-image pull cannot be verified until an explicitly approved publishing run.
 
 ### Prediction traceability
 
