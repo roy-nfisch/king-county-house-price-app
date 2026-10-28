@@ -47,9 +47,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Pass local lint, formatting, package build, notebook-format validation, and 50-line function/code-block checks.
     - [x] Review and merge PR #4. Push and PR CI passed. Preprocessing parity is separate from model-quality evaluation.
 
-## In progress
-
-- [ ] **T08 — Connect preprocessing to notebook modelling and export the model.** Join the reusable preprocessing pipeline with the existing estimator steps. Keep splitting, training/tuning, evaluation, and saving in the notebook; do not create a training service. Split before fitting dataset-dependent features, then save the complete fitted pipeline plus metadata to a new location and calculate its SHA-256 checksum for review. Done when a fresh process can reload it and reproduce predictions without notebook variables or reading the training CSV during a request. Do not overwrite our existing model.
+- [x] **T08 — Connect preprocessing to notebook modelling and export the model.** Done: the complete pipeline, notebook training/evaluation, new local export, and fresh-process verification were reviewed and merged in [PR #5](https://github.com/roy-nfisch/mle-refactoring-project/pull/5). Push and PR CI passed. The original model was not overwritten.
     - [x] Build a separate complete pipeline and split the 17 raw inputs before fitting. Keep full-data preprocessing only for the labelled original-baseline comparison.
     - [x] Run the original 9-candidate / 5-fold training search, preserving ElasticNet and scaling settings while isolating waterfront references inside each fold.
     - [x] Evaluate on 6,479 held-out rows: R² 0.8447, MAE $94,808, RMSE $143,443. Record limitations, measured scores, and a training-mean baseline separately from regression checks.
@@ -59,9 +57,20 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Review the implementation and scope before opening a PR. Training stays in the notebook; API work is not included. The implementation is committed and pushed.
     - [x] Confirm PR CI passes, review the changes, and merge before marking T08 done.
 
-## To do
+## In progress
 
 - [ ] **T09 — Build the prediction API.** Use Pydantic request/response models and a prediction service. Pin the approved artifact's SHA-256 in code; verify it before loading the same bytes once, and fail startup on mismatch. Validate the 17 raw input fields, predict, and return a finite price with its currency and model version. Provide a feature-only dataset example; missing required information must cause a clear validation error, not guessed values. Done when `/predict`, `/health`, and `/docs` work; invalid requests and missing-model startup fail clearly. Add a code TODO for Stage 2 CRUD at the application boundary, without implementing unused database scaffolding.
+    - [x] Add `HouseInput`, `PredictionResult`, `ModelArtifact`, and `PredictionService` with separate validation, verified loading, and prediction responsibilities.
+    - [x] Pin the reviewed export's SHA-256 and model version in code; verify and load the same bytes. Ignore sidecar checksums and reject unapproved custom types.
+    - [x] Add `src/api/` and matching `tests/api/`, an application factory, one-time lifespan loading, and predict/readiness/docs endpoints. No model loading during imports.
+    - [x] Require all 17 raw keys, implement explicit numeric/coordinate/area/null rules, convert ZIP strings to the numeric model feature, and reject unusable price outputs.
+    - [x] Provide `examples/house.json`, startup configuration, and instructions for supplying or deliberately approving a replacement model. Package both `king_county` and `api`.
+    - [x] Smoke-test the real reviewed artifact through TestClient and live Uvicorn on localhost:7002; readiness/docs/prediction succeeded, missing ZIP returned 422, and the temporary server was stopped.
+    - [x] Pass 322 tests, Ruff, formatting, package build, installed-package imports, wheel contents, documentation links, protected checksums, and 50-line checks. Fix the non-finite HTTP-input error boundary so invalid numbers return 422 without echoing raw inputs.
+    - [ ] Review before PR and confirm GitHub CI before merge. Keep request traceability, result saving, Docker, and deployment outside this change.
+
+## To do
+
 - [ ] **T09a — Add minimal prediction traceability.** Log request ID, UTC timestamp, model version, outcome, and duration without full request data. Keep saving prediction results optional and off by default; agree on the proposed JSON Lines format and failure policy in the design before implementing it. Done when logs identify a prediction's model and outcome, and optional saving is either explicitly deferred or has enabled, disabled, and write-failure tests. No audit database or dashboard is required.
 - [ ] **T10 — Add integration tests.** Check preprocessing → saved artifact → checksum verification → reload → prediction and request → API → response. Done when tests cover valid/invalid data, feature order, no fitting during prediction, and clear failures. Verify that approved bytes load and altered/truncated/wrong files are rejected before deserialisation. Add tests alongside T06–T09 rather than leaving all testing until the end.
 - [ ] **T11 — Run the app in Docker.** Package the app and define how its model artifact is supplied. Choose a free host port without changing internal addresses. Use `ubuntu-latest`, not `ubuntu-slim`, for the Docker build and container integration CI job; the lightweight Python checks can stay on slim. Done when a documented command starts the container, health is checked, and an example prediction succeeds. No database is required for Stage 1.

@@ -11,10 +11,11 @@ This is a portfolio project developed during the neue fische MLE course. It buil
 - **Stored reference data:** fitting remembers training waterfront coordinates. Transforming new houses reuses those coordinates without fitting again.
 - **Notebook training and export:** raw-data splitting, training-only grid search, held-out evaluation, and a complete saved pipeline with metadata and checksum.
 - **Reload verification:** a fresh Python process reproduces predictions using only the exported bundle and installed package, without the training CSV.
+- **Prediction API:** FastAPI validates the 17 raw inputs and calls the shared `PredictionService`; the verified model loads once at startup.
 - **Regression tests:** controlled examples check that the refactor preserves the original preprocessing results.
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 
-**Still planned:** the prediction API and Docker. There is no prediction server to start yet. See [tasks.md](tasks.md) for progress.
+**Still planned:** request-level traceability, Docker, and deployment. The API currently runs locally and has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
 
 ## The flow
 
@@ -28,7 +29,7 @@ flowchart LR
     M --> E[Evaluate and save complete pipeline]
 ```
 
-Training, evaluation, and model saving stay in the notebook. The future application will load the saved pipeline and predict; it will not run the notebook or retrain during requests.
+Training, evaluation, and model saving stay in the notebook. The application loads the saved pipeline and predicts; it does not run the notebook or retrain during requests.
 
 The notebook first fits preprocessing on all retained rows **only for the original-baseline comparison**. Its separate modelling section splits raw inputs first and fits a fresh complete pipeline inside each training fold. The evaluation never reuses the full-data baseline object.
 
@@ -76,7 +77,7 @@ uv run --locked pytest tests/
 uv build
 ```
 
-Tests mirror the source packages: `src/king_county/` → `tests/king_county/`. Notebook regression tests live in `tests/notebooks/`; shared fixtures stay at the test root. Future `src/api/` code will have its tests in `tests/api/`, discovered by the same CI command.
+Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; shared fixtures stay at the test root. The same CI command discovers all three folders.
 
 CI runs lint, formatting, tests, and the package build on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, deploy, or need API keys or a pre-existing model artifact.
 
@@ -85,16 +86,26 @@ CI runs lint, formatting, tests, and the package build on pushes and pull reques
 ```text
 mle-refactoring-project/
 ├── .github/workflows/ci.yml       # Automated development checks
+├── src/api/
+│   ├── __init__.py
+│   ├── errors.py                 # Safe 422 errors without raw input values
+│   ├── main.py                   # App factory and one-time startup loading
+│   ├── routes.py                 # Predict, readiness and error responses
+│   └── settings.py               # Model path and logging configuration
 ├── src/king_county/
 │   ├── __init__.py
+│   ├── artifacts.py              # Code-pinned checksum and verified loader
 │   ├── cleaning.py               # Copy-first cleaning rules
 │   ├── features.py               # Fitted distances and ordered features
+│   ├── prediction.py             # Shared prediction service; no training
+│   ├── schemas.py                # Pydantic house and price contracts
 │   ├── validation.py             # Cleaning and feature input checks
 │   ├── settings.py               # Pydantic logging settings
 │   └── logging_config.py         # Console logging setup
 ├── tests/
 │   ├── conftest.py               # Shared fixtures from the existing CSV
 │   ├── king_county/              # Tests matching the Python package
+│   ├── api/                      # Startup, HTTP and API settings checks
 │   ├── notebooks/                # Regression, training boundaries and export/reload
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
@@ -102,6 +113,7 @@ mle-refactoring-project/
 │   └── notebook-baseline.md      # Original rules and comparison details
 ├── data/King_County_House_prices_dataset.csv
 ├── assets/                       # Notebook images
+├── examples/house.json           # Feature-only record from the supplied CSV
 ├── King-County.ipynb              # Original EDA and modelling reference
 ├── King-County-refactored.ipynb    # Preprocessing, training, evaluation and export
 ├── pyproject.toml                # Dependencies and development configuration
@@ -118,7 +130,7 @@ The local `model/` folder is ignored and is not included in a fresh clone. Gener
 
 ## Prediction inputs and limitations
 
-The original notebook model uses **19 prepared features**. Our planned API will accept **17 raw fields** and derive basement area, the construction/renovation field, and distances. Missing information must produce a validation error; supporting fewer fields would require a separately trained and evaluated model. See [the input design](docs/design.md#what-if-we-do-not-have-all-the-inputs).
+The model uses **19 prepared features**. The API accepts **17 raw fields** and derives basement area, the construction/renovation field, and distances. Missing information produces a validation error; supporting fewer fields would require a separately trained and evaluated model. See [the input design](docs/design.md#what-if-we-do-not-have-all-the-inputs).
 
 The data covers **2014–2015**. This is an educational project, not a current property valuation service. The verified refactored run on 28 October 2026 achieved held-out **R² 0.8447**, **MAE $94,808**, and **RMSE $143,443**, using 15,117 training and 6,479 test rows. These are measured results on one shuffled split, not percentage accuracy or proof of performance on future sales. Repeated house IDs can cross the split. Regression tests establish preprocessing compatibility, while this separate evaluation measures prediction quality.
 
@@ -128,13 +140,43 @@ The notebook saves `pipeline.skops`, `metadata.json`, and `reload-example.json` 
 
 The notebook's fresh-process check verifies the bytes and permits only the two named custom transformer types. It checks serialization, not model quality or release approval. See [the export reference](docs/notebook-baseline.md#model-training-and-export) for details.
 
-The planned model loader will verify an approved SHA-256 before loading. This checks artifact integrity, not model quality or the safety of an untrusted file.
+The model loader verifies the code-pinned SHA-256 before loading the same bytes and permits only the two named custom transformer types. This checks artifact integrity, not model quality or the safety of an untrusted file. It does not trust a colocated metadata checksum.
+
+## Run the prediction API
+
+The approved local export must be available first. From the project root:
+
+```bash
+uv sync --locked
+uv run --locked uvicorn api.main:create_app --factory --host 127.0.0.1 --port 7002
+```
+
+Open [interactive docs](http://127.0.0.1:7002/docs) or send the dataset example:
+
+```bash
+curl http://127.0.0.1:7002/health
+curl -X POST http://127.0.0.1:7002/predict \
+  -H 'Content-Type: application/json' \
+  --data-binary @examples/house.json
+```
+
+The response contains `predicted_price`, `currency` (`USD`), and `model_version`. `/health` reports readiness after model loading, not prediction quality. Missing/invalid fields return **422**; model/output failures return **500**. Non-finite or non-positive prices fail explicitly rather than being clamped.
+
+ZIP codes must be five-digit strings; the service converts them to the model's numeric feature. Numeric fields reject strings and booleans. Years/counts are whole numbers, areas and coordinates are finite, and above-ground area cannot exceed living area. The keys `view`, `waterfront`, and `yr_renovated` are required but may be `null`, following the notebook's cleaning rules. There is no address lookup or guarantee that any in-range location is suitable for this historical model.
+
+### Supply or deliberately replace the model
+
+`src/king_county/artifacts.py` pins the reviewed model version, SHA-256, and default export path. `MODEL_PATH` can point to another location containing **the same approved bytes**; `LOG_LEVEL` controls logging. No `.env` file is loaded automatically, and no environment setting overrides the approved checksum.
+
+The model is ignored, so a fresh clone intentionally cannot start the API until an approved artifact is supplied. To create a replacement, run the notebook, review its evaluation/export, then deliberately update `MODEL_VERSION` and `EXPECTED_MODEL_SHA256` in code before launching. A re-export may have a different checksum even with identical predictions. Never calculate and accept a new expected checksum automatically at startup.
+
+The API does not save requests or prediction results. Request IDs, result persistence, authentication, Docker, and deployment remain separate work. Keep this local prototype bound to `127.0.0.1`.
 
 ## Project notes
 
-- [Design and diagrams](docs/design.md): responsibilities, notebook mapping, and planned prediction flow.
+- [Design and diagrams](docs/design.md): responsibilities, notebook mapping, and prediction flow.
 - [Baseline reference](docs/notebook-baseline.md): preserved rules and regression checks.
 - [Task list](tasks.md): completed work and next steps.
 - [Original assignment](project-description.md): the course requirements behind this project.
 
-The course's optional CRUD/database example is not part of this project's current implementation. Its local reference copy is excluded from Git. We are focusing on preprocessing first, followed by our prediction application.
+The course's optional CRUD/database example is not part of this project's current implementation. Its local reference copy is excluded from Git. The current application predicts prices; it does not store or edit house records.
