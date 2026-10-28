@@ -172,11 +172,11 @@ Thumbs.db
 
 # Keep only the single reviewed API artifact eligible for version control.
 /model/*
-!/model/refactored/
-/model/refactored/*
-!/model/refactored/king-county-20261028T153712021211Z/
-/model/refactored/king-county-20261028T153712021211Z/*
-!/model/refactored/king-county-20261028T153712021211Z/pipeline.skops
+!/model/versions/
+/model/versions/*
+!/model/versions/king-county-20261028T153712021211Z/
+/model/versions/king-county-20261028T153712021211Z/*
+!/model/versions/king-county-20261028T153712021211Z/pipeline.skops
 
 # Git Artifacts
 *.patch

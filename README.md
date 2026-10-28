@@ -140,7 +140,7 @@ mle-refactoring-project/
 │   ├── design.md                 # Class responsibilities and planned app
 │   └── notebook-baseline.md      # Original rules and comparison details
 ├── data/King_County_House_prices_dataset.csv
-├── model/refactored/king-county-20261028T153712021211Z/
+├── model/versions/king-county-20261028T153712021211Z/
 │   └── pipeline.skops            # Single checksum-approved inference pipeline
 ├── assets/                       # Notebook images
 ├── examples/house.json           # Feature-only record from the supplied CSV
@@ -166,9 +166,9 @@ The data covers **2014–2015**. This is an educational project, not a current p
 
 ### Exported files
 
-The notebook saves `pipeline.skops`, `metadata.json`, and `reload-example.json` under a new timestamped `model/refactored/king-county-…/` directory. Metadata records the input contract, metrics, data checksum, versions, and model SHA-256. The reload example contains three held-out feature-only records and their expected predictions. New exports remain local and ignored unless deliberately approved; rerunning export with the same directory fails rather than overwriting it.
+The notebook saves `pipeline.skops`, `metadata.json`, and `reload-example.json` under a new timestamped `model/versions/king-county-…/` directory. Metadata records the input contract, metrics, data checksum, versions, and model SHA-256. The reload example contains three held-out feature-only records and their expected predictions. New exports remain local and ignored unless deliberately approved; rerunning export with the same directory fails rather than overwriting it.
 
-**Why include one trained model?** The 73,355-byte `pipeline.skops` lets a fresh clone run the API and Docker demo without retraining or requesting a separate model download. It contains preprocessing and the fitted estimator, not just prediction weights. The original `model.bin` is a reference artifact and is not used by the API. Keeping one approved version also makes the demo reproducible; an arbitrary new export is not automatically trusted.
+**Why include one trained model?** The `pipeline.skops` file (about 72 KB) lets a fresh clone run the API and Docker demo without retraining or requesting a separate model download. It contains preprocessing and the fitted estimator, not just prediction weights. The original `model.bin` is a reference artifact and is not used by the API. Keeping one approved version also makes the demo reproducible; an arbitrary new export is not automatically trusted.
 
 **Artifact review:** the approved file matches the SHA-256 pinned in `src/king_county/artifacts.py` and loads with only the two expected custom transformer types. It retains 105 training waterfront coordinate pairs, scaling statistics, and fitted model parameters; it is not anonymised or free of training-derived data. No credential-like fields were found in the archive schema, but that inspection is not a comprehensive security certification. Before public release, confirm permission to redistribute the course dataset and its retained coordinates: the repository has an MIT software license, but no separate dataset source/license notice was found. This remains an open release check in `tasks.md`.
 

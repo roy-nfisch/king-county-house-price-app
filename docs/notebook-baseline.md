@@ -113,7 +113,7 @@ Verified local run on **28 October 2026**:
 
 R² is not percentage accuracy. The shuffled row split can place repeated properties in both sets; these results do not establish quality on future sales or unseen properties. Do not tune using the test score or describe regression parity as model-quality evidence.
 
-After reviewing the metrics, run the export cells. Each run creates a new timestamped directory under ignored `model/refactored/` with:
+After reviewing the metrics, run the export cells. Each run creates a new timestamped directory under `model/versions/` with the following files; new exports remain ignored unless deliberately approved:
 
 - `pipeline.skops`: the entire fitted pipeline, including training reference coordinates.
 - `metadata.json`: model version/checksum, raw/prepared names, data checksum, split/grid settings, metrics, and dependency versions.
