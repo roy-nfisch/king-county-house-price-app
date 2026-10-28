@@ -7,25 +7,26 @@ Before changing the code's structure, we need a reference for its behaviour. Thi
 | File | Purpose |
 |---|---|
 | `King-County.ipynb` | Original course notebook; not edited by T05. Its committed execution outputs are currently cleared. |
-| `King-County-refactored.ipynb` | A 20-cell working copy importing `HouseCleaner`; distance calculations and feature selection are still inline. No EDA or training. |
+| `King-County-refactored.ipynb` | A 10-cell working copy using the cleaner and feature object in a preprocessing pipeline. No EDA or model training. |
 | `src/king_county/cleaning.py` | Reusable sklearn-compatible cleaner; fixed rules, no row removal or learned values. |
-| `src/king_county/validation.py` | Separate validation object used by the cleaner; checks inputs without modifying them. |
+| `src/king_county/features.py` | Fitted waterfront locations, shared distance calculation, and ordered model features. |
+| `src/king_county/validation.py` | Separate input validators for cleaning and feature creation; neither changes supplied data. |
 | `tests/fixtures/notebook_baseline.json` | Fixed expected outputs and feature order; no duplicate raw dataset. |
-| `tests/test_notebook_baseline.py` | Runs selected trusted preprocessing cells against controlled CSV rows. No training or model loading. |
+| `tests/notebooks/test_notebook_baseline.py` | Runs selected trusted preprocessing cells against controlled CSV rows. No training or model loading. |
 
 From the project root:
 
 ```bash
-uv run --locked pytest tests/test_notebook_baseline.py
+uv run --locked pytest tests/notebooks/test_notebook_baseline.py
 ```
 
-Open the working notebook with the project's `.venv` kernel and run it from the repository root. It processes the full CSV, including the original nested waterfront-distance loop, so it takes longer than the small regression tests. It does not write any model file.
+Open the working notebook with the project's `.venv` kernel and run it from the repository root. It processes the full CSV through the reusable preprocessing pipeline. Waterfront distances use array operations per reference rather than the original nested per-house loop. It does not write any model file.
 
-Verification: all working-copy code cells ran against the full CSV in Python and produced **21,596 rows, 19 features, 146 waterfront reference houses, and no missing prepared values**. Both notebook snapshots match, and a deliberate one-square-foot output change was detected. No model was trained or loaded.
+Verification: all working-copy code cells ran against the full CSV in Python and produced **21,596 rows, 19 features, 146 waterfront reference houses, and no missing prepared values**. All 19 prepared columns also match the original preprocessing on the full retained dataset within the comparison tolerances below. Both controlled notebook snapshots match. No model was trained or loaded.
 
 ## The reference rules
 
-Cell numbers include Markdown. Each copied code cell records its original number in its metadata.
+Cell numbers below refer to the original notebook and include Markdown. The working copy records its remaining copied cells and shared pipeline steps in metadata for the comparison tests.
 
 | Step | Original cells | Behaviour to preserve before intentional changes |
 |---|---|---|
@@ -48,9 +49,9 @@ Only rows **49 and 230** are waterfront references in this comparison. Its froze
 
 Tests compare six transformed columns, retained row labels, waterfront reference rows, and all 19 feature names in order. Float comparisons use `rtol=1e-10` and `atol=1e-8`, allowing rounding noise rather than a changed formula. A dataset SHA-256 detects source-data changes. Tests must never regenerate expected values automatically.
 
-These tests temporarily execute selected cells from our own trusted notebooks. The working copy now calls `HouseCleaner`, while the original still runs its inline cleaning. Both use the same frozen expected values. Feature extraction will reuse this comparison next. This is a baseline bridge, not the application's loading mechanism.
+These tests temporarily execute selected cells from our own trusted notebooks. The working copy uses the cleaning/feature pipeline, while the original still runs inline preprocessing. The runner returns the same pair of results for both: prepared features and waterfront coordinates. Both are compared with the same frozen expectations. This is a baseline bridge, not the application's loading mechanism.
 
-Pandas warnings about `DataFrame.drop(..., inplace=True)` remain visible in the unchanged original and the working copy's training-row exclusion. `HouseCleaner` uses copy-first transformations without `inplace`.
+Pandas warnings about `DataFrame.drop(..., inplace=True)` remain visible in the unchanged original. The working copy and our transformers do not use `inplace`.
 
 ## Extracted cleaning
 
@@ -61,6 +62,16 @@ Missing required columns, non-real cleaning values (including booleans and compl
 The checks live in `HouseDataValidator`, not in the cleaner. `HouseDataValidator(raw_data).validate()` runs the named checks in order and returns the numeric cleaning columns. Direct validator tests check failures and input preservation; cleaner tests check transformations and pipeline behaviour.
 
 Boundary tests explicitly cover zero and just-negative areas, equality and values just above/below the living-area limit, finite floating-point extremes, and both infinities. They also cover year-storage boundaries, each nullable field, zero renovation, empty/single-house batches, and nonsequential/duplicate row labels. They do not invent maximum house sizes, plausible construction-year ranges, or API business rules that the cleaner does not implement.
+
+## Extracted feature engineering
+
+`HouseFeatureEngineer.fit()` stores a copy of waterfront longitude/latitude pairs from its supplied rows, not complete records or prices. `transform()` never refits or adds incoming waterfront houses to those references. It returns a new table with the canonical 19 feature names and preserves row labels. Extra columns and supplied distances are excluded or recalculated.
+
+The centre and waterfront paths share `_distance_km()`. Their latitude corrections remain different, exactly as in the notebook. Each reference is compared with all query rows using NumPy, keeping temporary memory linear in the query count rather than allocating a full query-by-reference matrix.
+
+`HouseFeatureValidator` requires the cleaned numeric inputs, finite values, and physical coordinate ranges (latitude +/-90, longitude +/-180). Missing columns and fitting without any waterfront house fail clearly; an empty transform batch is allowed after a successful fit. Tests cover those boundaries, input/reference preservation, feature order, pipeline cloning, and a held-out waterfront house whose distance must not become zero through self-reference.
+
+For baseline parity, this notebook deliberately fits on all retained rows. For actual model evaluation, fit after the train/test split and inside each cross-validation fold. The feature object already supports that boundary; wiring it to model training and exporting its learned state belongs to T08. Do not claim the original R² for this changed training setup without evaluating it.
 
 ## Training settings recorded for T08
 

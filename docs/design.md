@@ -43,6 +43,7 @@ Use **composition**: each class owns one job and receives the components it need
 | Component | Its job | What it must not do |
 |---|---|---|
 | `HouseDataValidator` | Hold the input table and run its named checks through `validate()`. Return numeric cleaning columns or raise a clear error. | Fill missing values, remove rows, or apply cleaning rules. |
+| `HouseFeatureValidator` | Check cleaned feature inputs, finite numeric values, and latitude/longitude limits. | Calculate features, learn references, or replace the future API contract. |
 | `HouseCleaner` | Apply the stated cleaning rules to a copy of the input table. Use sklearn's transformer interface. | Train a model or silently remove prediction rows. |
 | `HouseFeatureEngineer` | Learn and retain waterfront reference locations in `fit`; create distances and ordered features in `transform`. | Learn new references from prediction requests or use sale price as an input. |
 | `PredictionService` | Verify the pinned model checksum before loading the trusted fitted pipeline once; turn validated house details into a prediction. | Refit preprocessing, retrain, or save house records. |
@@ -61,7 +62,7 @@ Cell numbers below count **all cells, including Markdown**, starting at 1. `In[.
 | Notebook training — stays in the notebook | **Data Preparation**, cell 29; **Modeling**, cells 79–83; **Regularization and Hyperparameter Tuning**, cells 118–121; **Save the Model**, cell 132. | Import our preprocessing classes, then apply training-row rules, split, fit/tune, evaluate, and save the complete pipeline. Do not turn these steps into an application service. |
 | `PredictionService` | **Regularization and Hyperparameter Tuning**, cell 124 (`In[73]`) calls `elastic.predict(X_test_poly)`. | Reuse that prediction operation with the complete saved preprocessing pipeline. Startup loading and HTTP requests are new application code, not existing notebook steps. |
 | Pydantic models | No corresponding notebook implementation. **Business Understanding**, cell 5, describes dataset fields. | New validation around incoming house JSON, settings, and outgoing results. |
-| FastAPI routes | No corresponding notebook implementation. | New API boundary; the separate `bonus_solution/` demonstrates CRUD, not this prediction API. |
+| FastAPI routes | No corresponding notebook implementation. | Planned prediction API boundary; the course's optional CRUD example is not included in this repository. |
 
 The notebook creates waterfront references before splitting. Moving reference fitting inside the training pipeline is a deliberate change, explained in section 3; the table maps responsibilities, not an identical execution order.
 
@@ -69,7 +70,7 @@ This is the familiar application shape: **validated request → service → vali
 
 ### Training in the notebook: build and save what prediction will reuse
 
-The planned training notebook will import `HouseCleaner` and `HouseFeatureEngineer`. Currently, the working copy imports only `HouseCleaner` and keeps feature engineering inline. Data splitting, model training, tuning, evaluation, prediction for error analysis, and model saving stay in the notebook. The application will load the exported pipeline and predict; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
+The working copy imports `HouseCleaner` and `HouseFeatureEngineer` and joins them in a preprocessing pipeline. It currently fits all retained rows only to compare with the original full-data baseline. T08 will split first and connect these steps to the estimator. Data splitting, model training, tuning, evaluation, prediction for error analysis, and model saving stay in the notebook. The application will load the exported pipeline and predict; it will not run or serve the notebook. No training service, training endpoint, or scheduled retraining is needed.
 
 ```mermaid
 flowchart LR

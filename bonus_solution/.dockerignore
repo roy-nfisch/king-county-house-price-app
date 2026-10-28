@@ -1,6 +1,0 @@
-# The image needs only locked dependency metadata and the app package.
-**
-!pyproject.toml
-!uv.lock
-!app/
-!app/*.py
