@@ -11,10 +11,17 @@ import numpy as np
 import pandas as pd
 import pytest
 import skops.io as sio
+from fastapi.testclient import TestClient
 from numpy.testing import assert_allclose, assert_array_equal
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.linear_model import ElasticNet
 from sklearn.model_selection import KFold, cross_validate
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
+from api.main import create_app
+from api.settings import ApiSettings
+from king_county import artifacts
 from king_county.cleaning import HouseCleaner
 from king_county.features import HouseFeatureEngineer
 
@@ -208,3 +215,64 @@ def test_export_cannot_overwrite_an_existing_bundle(exported_bundle, monkeypatch
         run_step(state, "export")
 
     assert state["artifact_path"].read_bytes() == before
+
+
+def api_house(row):
+    """Adapt a held-out CSV row to the strict public JSON types, without defaults."""
+    values = {key: None if pd.isna(value) else value for key, value in row.items()}
+    for field in (
+        "bedrooms",
+        "condition",
+        "grade",
+        "yr_built",
+        "yr_renovated",
+        "waterfront",
+    ):
+        if values[field] is not None:
+            values[field] = int(values[field])
+    values["zipcode"] = f"{int(values['zipcode']):05d}"
+    return values
+
+
+@pytest.mark.parametrize("row_number", [0, 1, 2])
+@pytest.mark.parametrize("reverse_keys", [False, True])
+def test_api_reproduces_notebook_export_without_training(
+    exported_bundle, monkeypatch, row_number, reverse_keys
+):
+    """Exercise real notebook export -> verified loader -> service -> HTTP price.
+
+    Approve only this temporary test export in memory; production pins and files
+    are untouched. JSON key order must not change the model's feature order.
+    """
+    state = exported_bundle
+    monkeypatch.setattr(artifacts, "EXPECTED_MODEL_SHA256", state["model_sha256"])
+    house = api_house(state["X_test"].iloc[row_number])
+    if reverse_keys:
+        house = dict(reversed(list(house.items())))
+    references = state["fitted_pipeline"].named_steps["features"].waterfront_locations_
+    app = create_app(ApiSettings(model_path=state["artifact_path"]))
+    with (
+        patch.object(Pipeline, "fit", side_effect=AssertionError("No fit")),
+        patch.object(HouseCleaner, "fit", side_effect=AssertionError("No fit")),
+        patch.object(HouseFeatureEngineer, "fit", side_effect=AssertionError("No fit")),
+        patch.object(PolynomialFeatures, "fit", side_effect=AssertionError("No fit")),
+        patch.object(StandardScaler, "fit", side_effect=AssertionError("No fit")),
+        patch.object(ElasticNet, "fit", side_effect=AssertionError("No fit")),
+        patch.object(
+            TransformedTargetRegressor, "fit", side_effect=AssertionError("No fit")
+        ),
+        patch.object(pd, "read_csv", side_effect=AssertionError("No CSV")),
+        TestClient(app) as client,
+    ):
+        response = client.post("/predict", json=house)
+        assert response.status_code == 200, response.text
+        actual = client.app.state.prediction_service._pipeline
+        assert list(actual.named_steps["features"].get_feature_names_out()) == list(
+            HouseFeatureEngineer.FEATURE_NAMES
+        )
+        assert_array_equal(
+            actual.named_steps["features"].waterfront_locations_, references
+        )
+    assert response.json()["predicted_price"] == pytest.approx(
+        state["predictions"][row_number], rel=1e-10, abs=1e-6
+    )

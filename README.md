@@ -81,6 +81,18 @@ Tests mirror the source packages: `src/king_county/` → `tests/king_county/` an
 
 CI runs lint, formatting, tests, and the package build on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, deploy, or need API keys or a pre-existing model artifact.
 
+### What the integration tests connect
+
+| Check | What it protects |
+|---|---|
+| Notebook training/export → verified loader → API prediction | The API reproduces held-out predictions from the notebook's small ElasticNet test run, not only a dummy model. |
+| Reordered JSON fields → ordered model features | Sending the same house fields in a different order does not change the result. |
+| Startup and prediction with fitting/CSV reads blocked | The exported model is enough; serving a prediction must not retrain or reopen the dataset. |
+| Truncated, altered, or replaced model archives → checksum rejection | Unapproved bytes never reach type inspection or deserialisation. |
+| Invalid house JSON or unusable model output → HTTP error | Validation and failure handling work across the API/service boundary. |
+
+These tests reuse the supplied CSV and temporary artifacts. Only the test export's checksum is approved in memory for that test; production approval constants are unchanged. The checks establish that the parts work together, **not** that a model is accurate on future house sales.
+
 ## Repository layout
 
 ```text

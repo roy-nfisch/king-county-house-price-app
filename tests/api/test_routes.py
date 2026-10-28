@@ -193,3 +193,42 @@ def test_model_failure_returns_500(client, house_payload):
         PredictionService, "predict", side_effect=PredictionError("Unable to predict.")
     ):
         assert client.post("/predict", json=house_payload).status_code == 500
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("price", 500000),
+        ("bathrooms", "2"),
+        ("bedrooms", True),
+        ("lat", 90.01),
+    ],
+)
+def test_invalid_house_values_never_reach_service(client, house_payload, field, value):
+    """Check representative schema rules at the HTTP boundary, not only in units."""
+    house_payload[field] = value
+    with patch.object(PredictionService, "predict") as predict:
+        response = client.post("/predict", json=house_payload)
+    predict.assert_not_called()
+    assert response.status_code == 422
+
+
+def test_area_above_living_area_never_reaches_service(client, house_payload):
+    """Derive the invalid area from the request rather than example constants."""
+    house_payload["sqft_above"] = house_payload["sqft_living"] + 1
+    with patch.object(PredictionService, "predict") as predict:
+        response = client.post("/predict", json=house_payload)
+    predict.assert_not_called()
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("output", [[float("nan")], []])
+def test_invalid_pipeline_output_becomes_controlled_http_error(
+    client, house_payload, output
+):
+    """Exercise pipeline -> real service validation -> route error translation."""
+    pipeline = client.app.state.prediction_service._pipeline
+    with patch.object(pipeline, "predict", return_value=output):
+        response = client.post("/predict", json=house_payload)
+    assert response.status_code == 500
+    assert response.json() == {"detail": "The model could not produce a valid price."}
