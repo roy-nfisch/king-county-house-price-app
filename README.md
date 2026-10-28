@@ -2,7 +2,7 @@
 
 We are turning the King County house-price notebook into a simple, object-oriented Python application. The course's core task is to extract data cleaning and feature engineering into a reusable pipeline. Training, evaluation, and model saving stay in the notebook. Our portfolio extension adds a prediction API, tests, and a local Docker run.
 
-**Status: design review.** We have run the notebook and saved its model. The refactored prediction application, its tests, and its Docker setup have not been implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
+**Status: foundation complete (T04).** The design is approved. The installable Python package, validated logging settings, foundation tests, and CI workflow are in place; GitHub checks passed on `ubuntu-slim`. Next is T05: capture the notebook baseline. Cleaning/feature classes, the prediction API, model verification, and the app's Docker setup are not implemented yet. The existing `bonus_solution/` is a separate course CRUD example, not the prediction application.
 
 ## Our project at a glance
 
@@ -49,15 +49,43 @@ By the end of this repository, you should be able to:
 | [**Project Description**](project-description.md) | The assignment tasks and stretch goals. |
 | [**King County Notebook**](King-County.ipynb) | The original notebook: EDA, cleaning, feature engineering, and modeling for King County house prices. |
 
-### Additional Folders and Files
+## Repository layout
 
-| File / Folder | Description |
-|---|---|
-| [**data**](data/) | The King County house price dataset used by the notebook. |
-| [**assets**](assets/) | Visual aids referenced in the repository. |
-| [**bonus_solution**](bonus_solution/) | A FastAPI + Postgres + Docker reference implementation for the optional CRUD stretch goal. |
-| [**pyproject.toml**](pyproject.toml) | Project configuration and dependencies. |
-| [**uv.lock**](uv.lock) | Dependency lock file. |
+Main files and folders at T04; folder contents are collapsed where not relevant to the foundation:
+
+```text
+mle-refactoring-project/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                # Automated lint, format, tests and package build
+├── src/
+│   └── king_county/
+│       ├── __init__.py            # Makes king_county an importable package
+│       ├── settings.py            # Pydantic validation for LOG_LEVEL
+│       └── logging_config.py      # Standard Python console logging setup
+├── tests/
+│   ├── test_settings.py           # Defaults, allowed levels and invalid settings
+│   ├── test_logging_config.py     # Logging configuration unit test
+│   └── test_package.py            # Installed imports and real console logging
+├── docs/
+│   └── design.md                 # Agreed design, notebook mapping and diagrams
+├── data/
+│   └── King_County_House_prices_dataset.csv
+├── assets/                       # Original notebook images
+├── bonus_solution/               # Separate course CRUD reference, unchanged
+├── model/                        # Local saved model; ignored by Git
+├── King-County.ipynb              # Training, evaluation and model saving
+├── .gitignore                    # Excludes local/generated files
+├── .python-version               # Existing Python 3.13 version rule
+├── pyproject.toml                # Dependencies, packaging, pytest and Ruff
+├── uv.lock                       # Exact resolved dependency versions
+├── project-description.md        # Original course assignment
+├── tasks.md                      # Task progress and completion checks
+├── README.md                     # Project overview and development commands
+└── LICENSE
+```
+
+`model/` is local and will not appear in a fresh clone. `.venv/`, caches, and `dist/` build outputs are omitted from this tree and ignored by Git. The planned cleaning, feature-engineering, and prediction modules are not created yet.
 
 ## Setup
 
@@ -135,6 +163,33 @@ code .
 ```
 
 Then open [King-County.ipynb](King-County.ipynb) and select the Python environment created by `uv sync` as the kernel.
+
+## Development checks (T04)
+
+Run these from the project root. `uv sync --locked` installs the package and development dependencies using `uv.lock`; do not add `src/` to `PYTHONPATH`.
+
+```bash
+uv sync --locked
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked pytest
+uv build
+```
+
+Ruff currently checks the new package, tests, and `pyproject.toml`, not the original notebook or the separate bonus solution. CI runs the checks and Python package build on `ubuntu-slim` for pushes, pull requests, or a manual run. It uses the existing Python 3.13 version rule and a locked dependency install; no API keys or model files are needed, and it does not train or deploy a model. The slim runner has a 15-minute job limit. Future Docker build/container checks will use a separate `ubuntu-latest` job; registry publishing is tracked separately in [T11a](tasks.md#to-do) and is not implemented yet.
+
+`AppSettings` reads `LOG_LEVEL` from the environment; the default is `INFO`. Allowed values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. An invalid value raises a Pydantic validation error. Use logging explicitly at startup; importing the package does not configure global logging:
+
+```python
+import logging
+
+from king_county.logging_config import configure_logging
+from king_county.settings import AppSettings
+
+settings = AppSettings.from_environment()
+configure_logging(settings)
+logging.getLogger("king_county").info("Foundation ready")
+```
 
 ## How to Use This Repo
 
