@@ -3,6 +3,8 @@ name = "mle-refactoring-project"
 version = "0.1.0"
 description = "Reusable King County preprocessing and house-price prediction."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13.17"
 dependencies = [
     "fastapi>=0.115,<1",

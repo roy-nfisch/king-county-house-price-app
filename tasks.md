@@ -107,16 +107,21 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] With explicit approval, run [publication 40786740479](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40786740479). Hosted artifact transfer, GHCR authentication, digest pull, approved-model health/prediction, and latest promotion passed. Digest: `sha256:dd2e189dd437878d3a09f7a18e89cd0b063126a0721f97b3641894c444327311`.
     - [x] Verify visibility in GitHub settings. The package initially displayed Public despite the documented private default; change it to Private and confirm the resulting setting. No model is included in the image. Local CLI package metadata remains unavailable without `read:packages`; the signed-in browser supplied the visibility check.
 
-## In progress
-
-- [ ] **T12 — Prepare the portfolio explanation.** Started on `feature/portfolio-walkthrough`. Add a short notebook-to-app walkthrough and keep the README run instructions accurate. Explain the original workflow, class responsibilities, input/output example, test categories, measured results, challenges, and limitations. Do not describe R² as percentage accuracy.
+- [x] **T12 — Prepare the portfolio explanation.** Merged in PR #13 with passing CI. The walkthrough and README explain the original workflow, class responsibilities, input/output example, test categories, measured results, challenges, and limitations. R² is not described as percentage accuracy.
     - [x] Draft `docs/notebook-to-app.md`, link it from the README and file tree, and distinguish the course core from our prediction extension. Correct stale artifact/app status in the design document.
     - [x] Add private registry login, exact digest pull, read-only model mount, localhost port, example prediction, troubleshooting, and stop instructions.
-    - [ ] Review the walkthrough and private-image instructions from a fresh-checkout perspective. The workflow ran the image successfully; local private pulling still requires a separately authorised account/token with `read:packages`.
+    - [x] Review the walkthrough from an isolated checkout: locked installation, package build, and 457 tests passed; six Docker checks skipped without a selected image. The first publishing workflow verified its image; local private pulling still needs authorised package credentials. Public-image readiness is tracked separately below.
 
-## To do
+## In progress
 
-- [ ] **T13 — Final review and public repository check.** Use small feature branches and PRs. Check the public repository for secrets, generated files, misleading claims, and reproducibility gaps. Done when CI passes and we approve the working application and documentation.
+- [ ] **T13 — Final review and public repository check.** Started on `feature/final-review` from merged `main`. Keep the implementation simple and OOD first; do not commit. Findings and evidence are in `docs/final-review.md`.
+    - [x] Run an independent read-only audit with GPT-6 Astra (high), different from implementer GPT-6.1 Sol. No application correctness/OOD redesign needed; record concrete packaging and documentation findings.
+    - [x] Check an isolated clone, merged-main CI, tracked/generated files, and common credential signatures across the tracked tree and 43 locally reachable commits. Targeted checks found no matches; do not claim a comprehensive security scan.
+    - [x] Fix missing MIT notice in package/image inputs, add metadata/runtime regressions, and correct stale Docker/app wording. Preserve original notebook, CSV, and approved model.
+    - [x] Verify local fixes: all 466 tests pass with the corrected local image, including seven Docker integration cases; three existing notebook warnings remain. Lint, formatting, package build, Compose, documentation links/shell syntax, and diff checks pass. Independent reviewer rechecked the delta and four package tests; no remaining defect found in those changes.
+    - [ ] Review before any commit; new branch CI awaits an authorised push. Dataset/model redistribution and the public-image hand-off remain open.
+    - [ ] After review/merge, publish a corrected image version and verify it. GHCR visibility is package-wide: get explicit approval to remove the old deficient version, or choose a separate corrected public package. Keep the current image private until resolved; no silent deletion/tag overwrite.
+    - [ ] Once approved for public access, change visibility, verify anonymous digest pulling and image checks, and update README/badge/no-login run instructions. Do not deploy the API.
     - [ ] Before public release, confirm redistribution permission for the course dataset and the model's retained waterfront coordinates. The MIT software license alone does not establish the dataset's licensing; no separate dataset source/license notice was found. Do not treat technical checksum approval as redistribution clearance.
 
 ## Stage 2 — Deferred

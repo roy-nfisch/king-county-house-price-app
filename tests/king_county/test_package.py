@@ -3,10 +3,21 @@
 import os
 import subprocess
 import sys
+from importlib.metadata import distribution
 
 import pytest
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [("License-Expression", ["MIT"]), ("License-File", ["LICENSE"])],
+)
+def test_installed_package_declares_license(field, expected):
+    """Declare licensing even in editable installs; Docker checks shipped text."""
+    package = distribution("mle-refactoring-project")
+    assert package.metadata.get_all(field) == expected
 
 
 def test_installed_package_logs_outside_repository(tmp_path):
