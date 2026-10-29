@@ -22,7 +22,7 @@ def smoke_shell(tmp_path):
     """
     workflow = (ROOT / ".github/workflows/publish-image.yml").read_text()
     step = workflow.split("- name: Check published image with the approved model", 1)[1]
-    step = step.split("- name: Update latest", 1)[0]
+    step = step.split("- name: Verify published CRUD", 1)[0]
     assert "shell: bash" in step  # GitHub's explicit bash shell enables pipefail.
     script = textwrap.dedent(step.split("run: |\n", 1)[1])
     commands = {

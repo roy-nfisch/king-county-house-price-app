@@ -154,6 +154,10 @@ jobs:
           curl --connect-timeout 5 --max-time 15 --fail --silent --show-error "http://$port/predict" \
             -H 'Content-Type: application/json' --data-binary @examples/house.json | \
             python3 -c 'import json, math, sys; p=json.load(sys.stdin)["predicted_price"]; assert math.isfinite(p) and p > 0'
+      - name: Verify published CRUD
+        run: |
+          port=$(docker port published-api 8000/tcp)
+          python3 .github/scripts/verify_published_crud.py "http://$port"
       - name: Update latest after verification
         env:
           REFERENCE: ${{ steps.published.outputs.reference }}
