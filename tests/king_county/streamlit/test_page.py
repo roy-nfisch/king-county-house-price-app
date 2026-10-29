@@ -38,9 +38,8 @@ def test_valid_form_reuses_service_without_training(
         app.button[0].click().run()
         app.button[0].click().run()
     assert not app.exception
-    assert app.success[0].value == (
-        f"Estimated price: ${expected.predicted_price:,.2f} USD"
-    )
+    assert app.metric[0].label == "Estimated price (USD)"
+    assert app.metric[0].value == f"${expected.predicted_price:,.2f}"
     assert any("Model version:" in caption.value for caption in app.caption)
     load.assert_called_once()
 
@@ -49,9 +48,9 @@ def test_invalid_form_does_not_load_model(monkeypatch):
     """Bad ZIP and incompatible areas give safe feedback before loading."""
     app = AppTest.from_file(str(APP)).run()
     app.text_input[0].set_value("bad")
-    next(
-        widget for widget in app.number_input if widget.label == "sqft_above"
-    ).set_value(2000.0)
+    next(widget for widget in app.number_input if widget.key == "sqft_above").set_value(
+        2000.0
+    )
     with patch.object(ui, "PredictionService", side_effect=AssertionError("loaded")):
         app.button[0].click().run()
     assert not app.exception
@@ -78,12 +77,12 @@ def test_sessions_do_not_share_a_cached_model(approved_artifact, monkeypatch, tm
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
     first = AppTest.from_file(str(APP)).run()
     first.button[0].click().run()
-    assert first.success
+    assert first.metric
     monkeypatch.setattr(ui, "MODEL_PATH", tmp_path / "missing")
     second = AppTest.from_file(str(APP)).run()
     second.button[0].click().run()
     assert second.error
-    assert not second.success
+    assert not second.metric
 
 
 def test_prediction_failure_is_safe(approved_artifact, monkeypatch):
@@ -99,15 +98,28 @@ def test_prediction_failure_is_safe(approved_artifact, monkeypatch):
     assert "secret" not in app.error[0].value
 
 
-def test_nullable_fields_and_leading_zero_zip(
-    approved_artifact, monkeypatch, house_payload
+@pytest.mark.parametrize("unknown", [False, True])
+def test_edited_fields_and_leading_zero_zip(
+    approved_artifact, monkeypatch, house_payload, unknown
 ):
-    """Unknown values and the ZIP string reach the shared service unchanged."""
+    """Edited numbers, coordinates, nullable values and ZIP reach the service."""
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
     app = AppTest.from_file(str(APP)).run()
     app.text_input[0].set_value("01234")
+    edited = {
+        "bedrooms": 4,
+        "sqft_living": 2000.0,
+        "lat": 47.6,
+        "long": -122.3,
+        "view": 2.0,
+        "yr_renovated": 2010,
+    }
+    for widget in app.number_input:
+        if widget.key in edited:
+            widget.set_value(edited[widget.key])
+    app.selectbox[0].set_value(1)
     for checkbox in app.checkbox:
-        checkbox.set_value(True)
+        checkbox.set_value(unknown)
     with patch.object(PredictionService, "predict", autospec=True) as predict:
         from king_county.schemas import PredictionResult
 
@@ -116,11 +128,11 @@ def test_nullable_fields_and_leading_zero_zip(
         )
         app.button[0].click().run()
     house = predict.call_args.args[1]
-    expected = dict(
-        house_payload, zipcode="01234", waterfront=None, view=None, yr_renovated=None
-    )
+    expected = dict(house_payload, **edited, zipcode="01234", waterfront=1)
+    if unknown:
+        expected.update(waterfront=None, view=None, yr_renovated=None)
     assert house.model_dump() == expected
-    assert app.success and not app.exception
+    assert app.metric and not app.exception
 
 
 def test_altered_model_fails_without_caching(approved_artifact, monkeypatch):

@@ -9,48 +9,12 @@ from pydantic import ValidationError
 from king_county.artifacts import DEFAULT_MODEL_PATH, ModelArtifact, ModelLoadError
 from king_county.prediction import PredictionError, PredictionService
 from king_county.schemas import HouseInput
+from king_county.streamlit.form import HouseForm
 
 ROOT = Path(__file__).resolve().parents[3]
 MODEL_PATH = ROOT / DEFAULT_MODEL_PATH
 EXAMPLE_PATH = ROOT / "examples/house.json"
 logger = logging.getLogger(__name__)
-
-
-def house_form(example: dict) -> tuple[dict, bool]:
-    """Collect the 17 raw fields and return their values and submit state."""
-    values = {}
-    with st.form("house"):
-        st.caption("All fields are required; select Unknown where available.")
-        for name in ("bedrooms", "condition", "grade", "yr_built"):
-            values[name] = st.number_input(name, 0, 1_000_000_000, example[name])
-        for name in (
-            "bathrooms",
-            "sqft_living",
-            "sqft_lot",
-            "floors",
-            "sqft_above",
-            "sqft_living15",
-            "sqft_lot15",
-        ):
-            values[name] = st.number_input(
-                name, 0.0, 1_000_000_000.0, float(example[name])
-            )
-        for name in ("waterfront", "view", "yr_renovated"):
-            unknown = st.checkbox(f"{name}: unknown", value=example[name] is None)
-            if name == "waterfront":
-                value = st.selectbox(name, [0, 1], index=example[name] or 0)
-            elif name == "view":
-                value = st.number_input(
-                    name, 0.0, 1_000_000_000.0, float(example[name] or 0)
-                )
-            else:
-                value = st.number_input(name, 0, 1_000_000_000, example[name] or 0)
-            values[name] = None if unknown else value
-        values["zipcode"] = st.text_input("zipcode", example["zipcode"], max_chars=5)
-        values["lat"] = st.number_input("lat", -90.0, 90.0, example["lat"])
-        values["long"] = st.number_input("long", -180.0, 180.0, example["long"])
-        submitted = st.form_submit_button("Predict price")
-    return values, submitted
 
 
 class HousePricePage:
@@ -89,12 +53,23 @@ class HousePricePage:
         except PredictionError:
             st.error("The model could not produce a valid price for this house.")
             return
-        st.success(f"Estimated price: ${result.predicted_price:,.2f} USD")
-        st.caption(f"Model version: {result.model_version}")
+        with st.container(border=True):
+            st.metric("Estimated price (USD)", f"${result.predicted_price:,.2f}")
+            st.caption(f"Model version: {result.model_version}")
 
     def render(self) -> None:
         """Show the example-filled form and handle a submitted house."""
-        st.title("King County house price")
+        st.set_page_config(
+            page_title="King County | House price", page_icon="🏠", layout="wide"
+        )
+        st.title("Explore a house price")
+        st.caption("KING COUNTY · NOTEBOOK TO APP")
+        st.write(
+            "Start with the example below, adjust the house details, then estimate its price."
+        )
+        st.info(
+            "Educational estimate from a historical model—not a professional valuation."
+        )
         try:
             example = HouseInput.model_validate_json(
                 self.example_path.read_text(encoding="utf-8")
@@ -103,6 +78,6 @@ class HousePricePage:
             logger.error("The bundled house example is unavailable or invalid.")
             st.error("The bundled house example is unavailable or invalid.")
             return
-        values, submitted = house_form(example)
+        values, submitted = HouseForm(example).render()
         if submitted:
             self.predict(values)

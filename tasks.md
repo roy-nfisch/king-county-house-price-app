@@ -57,7 +57,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Review the implementation and scope before opening a PR. Training stays in the notebook; API work is not included. The implementation is committed and pushed.
     - [x] Confirm PR CI passes, review the changes, and merge before marking T08 done.
 
-- [x] **T09 — Build the prediction API.** Done: reviewed and merged in [PR #6](https://github.com/roy-nfisch/mle-refactoring-project/pull/6), with 355 tests and passing push/PR CI. Pydantic validates raw house inputs; a shared service loads the checksum-approved model once and predicts. Readiness/docs work and missing/changed artifacts fail startup. Stage 2 CRUD remains a boundary TODO, not unused database scaffolding.
+- [x] **T09 — Build the prediction API.** Done: reviewed and merged in [PR #6](https://github.com/roy-nfisch/mle-refactoring-project/pull/6), with 355 tests and passing push/PR CI. Pydantic validates raw house inputs; a shared service loads the checksum-approved model once and predicts. Readiness/docs work and missing/changed artifacts fail startup. House CRUD was added separately in Stage 2 without changing prediction.
     - [x] Add `HouseInput`, `PredictionResult`, `ModelArtifact`, and `PredictionService` with separate validation, verified loading, and prediction responsibilities.
     - [x] Pin the reviewed export's SHA-256 and model version in code; verify and load the same bytes. Ignore sidecar checksums and reject unapproved custom types.
     - [x] Add `src/api/` and matching `tests/api/`, an application factory, one-time lifespan loading, and predict/readiness/docs endpoints. No model loading during imports.
@@ -85,7 +85,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Add independent public API contract expectations for request fields/types/nullability, live prediction responses, and safe validation errors. Reuse API/model fixtures and move overlapping checks instead of copying them. All 423 tests, Ruff, formatting, and diff checks pass; the three original-notebook warnings remain.
     - [x] Review and merge the integration and contract changes in PR #8.
 
-- [x] **T11 — Run the app in Docker.** Done: local Docker setup merged in PR #9, test categories and parallel execution merged in PR #10, with passing PR #10 CI including Docker on Ubuntu 26.04. The API runs with its approved model mounted read-only; no database is required.
+- [x] **T11 — Run the app in Docker.** Done: local Docker setup merged in PR #9, test categories and parallel execution merged in PR #10, with passing PR #10 CI including Docker on Ubuntu 26.04. The API runs with its approved model mounted read-only. Prediction itself needs no database; the later CRUD extension uses SQLite.
     - [x] Add a multi-stage image with locked runtime dependencies, non-root user, and readiness health check. Exclude model/data/notebooks/secrets from the build context.
     - [x] Add Compose with localhost port 7003 → container 8000 and a read-only approved-model mount. Preserve code-pinned checksum verification and fail on a missing host artifact.
     - [x] Build and start locally; verify readiness and a prediction using the approved model.
@@ -112,7 +112,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Add private registry login, exact digest pull, read-only model mount, localhost port, example prediction, troubleshooting, and stop instructions.
     - [x] Review the walkthrough from an isolated checkout: locked installation, package build, and 457 tests passed; six Docker checks skipped without a selected image. The first publishing workflow verified its image; local private pulling still needs authorised package credentials. Public-image readiness is tracked separately below.
 
-- [x] **T13 — Final review and public runtime release.** Review and license fix merged in PR #14. Corrected image `2026.10.29.1` is public and anonymous pulls passed. Release documentation is on `docs/public-image-release`, uncommitted for review. Engineering review and runtime delivery are complete; dataset/model redistribution remains a separate unresolved follow-up below. Evidence is in `docs/final-review.md`.
+- [x] **T13 — Final review and public runtime release.** Review and license fix merged in PR #14; public release documentation merged in PR #15. Corrected image `2026.10.29.1` is public and anonymous pulls passed. Engineering review and runtime delivery are complete; dataset/model redistribution remains a separate unresolved follow-up below. Evidence is in `docs/final-review.md`.
     - [x] Run an independent read-only audit with GPT-6 Astra (high), different from implementer GPT-6.1 Sol. No application correctness/OOD redesign needed; record concrete packaging and documentation findings.
     - [x] Check an isolated clone, merged-main CI, tracked/generated files, and common credential signatures across the tracked tree and 43 locally reachable commits. Targeted checks found no matches; do not claim a comprehensive security scan.
     - [x] Fix missing MIT notice in package/image inputs, add metadata/runtime regressions, and correct stale Docker/app wording. Preserve original notebook, CSV, and approved model.
@@ -125,14 +125,22 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
 
 - [ ] Confirm redistribution permission for the course dataset and the model's retained waterfront coordinates. The MIT software license alone does not establish the dataset's licensing; no separate dataset source/license notice was found. These files already exist in the repository but stay outside the public image. Do not treat technical checksum approval or completion of the engineering work as redistribution clearance.
 
-## Stage 2 — Deferred
+## Stage 2 — Completed extensions
 
-- [x] **T14 — Add house CRUD.** Pydantic record schemas and the SQLite repository live under `king_county/house_records/`, separate from HTTP routes and prediction. Tests mirror that structure. The follow-up separation passed 529 tests, including eight Docker integration cases, with the same OpenAPI document and database behaviour. Lint, formatting and package build pass; PR CI passed before this uncommitted follow-up and must rerun after push. Five stored fields still do not satisfy prediction's full input contract. See [house CRUD](docs/house-crud.md).
+- [x] **T14 — Add house CRUD.** Merged in PR #16 with passing CI. Pydantic record schemas and the SQLite repository live under `king_county/house_records/`, separate from HTTP routes and prediction. Tests mirror that structure. The follow-up separation passed 529 tests, including eight Docker integration cases, with the same OpenAPI document and database behaviour. Five stored fields still do not satisfy prediction's full input contract. See [house CRUD](docs/house-crud.md).
 - [x] **T15 — Optional cloud development with Codespaces.** Completed private development/demo hosting, not an always-on production deployment. Costs, secrets, model storage and access reviewed; live health and prediction checks passed and operating instructions are documented.
     - [x] Approve included allowance only and private educational model use; create the two-core Europe West Codespace and verify health/prediction from its terminal. Stopped after checks on 29 October 2026.
     - [x] Finish [private browser forwarding checks](docs/codespaces.md). Resuming the existing Codespace restored forwarding; port 8000 was Private, browser health and prediction passed at `8946565`, and the workspace was stopped again.
 - [x] **T15a — Optional Streamlit prediction UI.** Build a small house-input form that passes data through Pydantic validation to the shared `PredictionService` and displays the predicted price. Call the Python service directly; FastAPI is not required between Streamlit and the service. Both interfaces must reuse the same prediction code and verified saved pipeline, without training during requests. Done when valid and invalid inputs are tested, local run instructions work, and model availability and compatible dependencies are documented before any Streamlit Community Cloud deployment.
-  - Original implementation independently audited by GPT-6.1 Sol. Rebased onto merged T14/T15 (`03bf21d`) and reviewed again locally: 555 non-Docker and 8 Docker integration tests passed, as did lint, formatting and package build. The browser form returned $323,409.49 USD with the approved model. Stronger form-value/example-file regression tests, mirrored Streamlit source/test packages and updated access guidance are committed. Fresh PR CI must pass before merge. No hosted UI has been deployed.
+  - Merged in PR #17 (`568f1d0`) with passing unit/integration/contract/Docker CI. Original implementation independently audited by GPT-6.1 Sol. Local review passed 555 non-Docker and 8 Docker integration tests, lint, formatting and package build. The browser form returned $323,409.49 USD with the approved model. No hosted UI has been deployed.
+
+## Final presentation and closeout
+
+- [x] **T16 — Refresh the UI and close out engineering work.** Completed grouped inputs in a small `HouseForm` object, page orchestration, friendly labels and a USD price card without changing the prediction contract. Course scope and the full task list were reviewed; stale status notes were corrected. Independent GPT-6.1 Terra high-effort audit found no remaining actionable issue. Local verification and owner review are complete. Final changes still need committing and fresh CI; no future CI result or redistribution clearance is claimed.
+    - [x] Implement grouped two-column fields, readable labels, precise coordinates and a price card without changing service/model logic.
+    - [x] Pass 560 non-Docker and eight Docker integration tests, lint, formatting, package build and a real browser prediction. Original notebooks, CSV and approved model are unchanged.
+    - [x] Review course requirements and the full task list; record scope and limitations in the lean [project review](docs/final-review.md).
+    - [x] Owner approved the local refresh. No further application task or additional PR is required by this task. Provenance follow-up stays open separately; normal commit and CI checks remain part of delivery.
 
 ## Working agreement
 
