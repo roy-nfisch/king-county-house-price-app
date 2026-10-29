@@ -24,7 +24,7 @@ For a quick overview, view the [five-slide refactoring summary (PDF)](docs/proje
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 - **Local Docker:** a non-root API image and Compose setup load the approved model from a read-only mount; container smoke checks have a separate CI job.
 
-**Published:** a verified public GHCR image, tagged `2026.10.29.1` and `latest`, downloadable without logging in. [Run the published image](#run-the-published-image) with the approved model mounted read-only. Publishing did not deploy the API. That image predates authentication; do not expose it publicly. See [deployment preparation](docs/deployment.md) and [tasks.md](tasks.md).
+**Published:** a verified public GHCR image, tagged `2026.10.29.1` and `latest`, downloadable without logging in. [Run the published image](#run-the-published-image) with the approved model mounted read-only. Publishing did not deploy the API. That image predates authentication; do not expose it publicly. See [private Codespaces development](docs/codespaces.md) and [tasks.md](tasks.md).
 
 ## The flow
 
@@ -168,6 +168,7 @@ mle-refactoring-project/
 │   │   ├── test_auth.py          # Bearer and cloud configuration checks
 │   │   ├── test_contract.py      # Public request, response and error contracts
 │   │   ├── test_houses.py        # House HTTP contracts, errors and app lifecycle
+│   │   ├── test_main.py          # Local/cloud application factory integration
 │   │   ├── test_routes.py        # Startup, prediction and HTTP failure handling
 │   │   ├── test_settings.py      # API configuration and environment checks
 │   │   └── test_traceability.py  # Request IDs, trace metadata and privacy
@@ -176,7 +177,7 @@ mle-refactoring-project/
 │   ├── workflows/                # Offline registry checks and smoke-check failures
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
-│   ├── deployment.md             # Cloud prerequisites and verification checklist
+│   ├── codespaces.md             # Private cloud development, diagram and checks
 │   ├── project-overview.pdf       # Five-slide project, learning and challenges summary
 │   ├── house-crud.md              # House storage contract and persistence
 │   ├── final-review.md            # Independent audit, fixes and release caveats
@@ -371,9 +372,11 @@ We log **no house details, predicted prices, or exception text** in these trace 
 If processing is interrupted, the outcome is `failed` even if a 200 response had already started. No started response means `status_code` is `null`. Unexpected server errors may return a generic 500 without the request-ID header. See [the design notes](docs/design.md#a-lightweight-audit-not-another-platform) for technical details.
 
 The source supports optional bearer authentication for HTTP routes except `/health`;
-cloud mode requires a token. See [private Codespaces deployment](docs/deployment.md)
-for prerequisites and operating instructions. Saving prediction results and
-live deployment remain deferred. Keep the local prototype bound to `127.0.0.1`.
+cloud mode requires a token. See [private Codespaces development](docs/codespaces.md)
+for prerequisites and operating instructions. A private Codespace passed direct
+health and prediction checks and was then stopped. Browser port forwarding is
+still unverified, so cloud deployment is not yet complete. Saving prediction
+results remains deferred. Keep the local prototype bound to `127.0.0.1`.
 
 ## Project notes
 

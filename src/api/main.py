@@ -63,7 +63,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     settings = settings or ApiSettings.from_environment()
     app = FastAPI(
         title="King County House Price API",
-        version="0.1.0",
+        version="2026.10.29",
         lifespan=model_lifespan(settings),
     )
     app.state.api_token = (
