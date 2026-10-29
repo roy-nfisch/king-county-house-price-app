@@ -56,6 +56,20 @@ Open [King-County-refactored.ipynb](King-County-refactored.ipynb) in your notebo
 
 For the original EDA and modelling workflow, see [King-County.ipynb](King-County.ipynb).
 
+### Run the optional Streamlit UI
+
+From the project root, install the UI extra and start the local app:
+
+```bash
+uv sync --locked --extra ui
+uv run --locked --extra ui streamlit run src/streamlit_app.py --server.address 127.0.0.1
+```
+
+The form starts with [examples/house.json](examples/house.json), validates all
+17 fields and calls the same verified prediction service as the API. It does
+not train or call the API. See [the UI notes](docs/streamlit-ui.md) for model
+availability, input limits and deployment prerequisites.
+
 ### Use the preprocessing package
 
 ```python
@@ -103,6 +117,10 @@ CI runs lint/format/build first. Unit, non-Docker integration, and contract jobs
 The development-only `pytest-xdist` plugin runs non-Docker integration tests with two worker processes. `--dist loadfile` keeps each file on one worker, so the notebook's module-scoped export fixture is not repeated across workers. Unit and contract cases remain serial within their own jobs: worker startup did not improve the measured unit run, and the contract checks share one file. Docker cases also remain serial within their job to keep resource use predictable. Use `-n 0` to debug an integration test without workers. Worker counts are explicit rather than automatically consuming every available CPU. See the [pytest-xdist distribution guide](https://pytest-xdist.readthedocs.io/en/stable/distribution.html).
 
 Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. Container smoke tests live in `tests/docker/` and skip unless `DOCKER_TEST_IMAGE` names a built image. `tests/workflows/` covers release checks offline: mocked registry checks are unit tests, and the smoke-check shell with Docker/curl stand-ins is integration tested. These tests never log in or publish.
+
+UI tests in `tests/king_county/test_ui.py` require `uv run --locked --extra ui pytest`; they
+explicitly skip when the extra is absent. CI installs the extra for category
+test jobs; the API Docker image remains independent of it.
 
 CI runs these stages on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, publish, deploy, or need API keys or a pre-existing model artifact.
 
@@ -153,12 +171,14 @@ mle-refactoring-project/
 │   │   └── repository.py         # SQLite house storage without HTTP dependencies
 │   ├── prediction.py             # Shared prediction service; no training
 │   ├── schemas.py                # Pydantic house and price contracts
+│   ├── ui.py                     # Optional Streamlit form and service wiring
 │   ├── validation.py             # Cleaning and feature input checks
 │   ├── settings.py               # Pydantic logging settings
 │   └── logging_config.py         # Console logging setup
 ├── tests/
 │   ├── conftest.py               # Shared fixtures from the existing CSV
 │   ├── king_county/              # Tests matching the Python package
+│   │   ├── test_ui.py            # Streamlit form integration checks
 │   │   └── house_records/
 │   │       ├── conftest.py       # Shared sample house fields
 │   │       ├── test_schemas.py   # Unit checks for house validation
@@ -183,13 +203,15 @@ mle-refactoring-project/
 │   ├── final-review.md            # Independent audit, fixes and release caveats
 │   ├── notebook-to-app.md         # Project journey, decisions, checks and limitations
 │   ├── design.md                 # Class responsibilities and planned app
-│   └── notebook-baseline.md      # Original rules and comparison details
+│   ├── notebook-baseline.md      # Original rules and comparison details
+│   └── streamlit-ui.md           # Local UI and deployment prerequisites
 ├── data/King_County_House_prices_dataset.csv
 ├── model/versions/king-county-20261028T153712021211Z/
 │   └── pipeline.skops            # Single checksum-approved inference pipeline
 ├── assets/                       # Notebook images
 ├── examples/house.json           # Feature-only record from the supplied CSV
 ├── .devcontainer/                # Private Codespaces development environment
+├── src/streamlit_app.py          # Local UI entry point
 ├── King-County.ipynb              # Original EDA and modelling reference
 ├── King-County-refactored.ipynb    # Preprocessing, training, evaluation and export
 ├── pyproject.toml                # Dependencies and development configuration
