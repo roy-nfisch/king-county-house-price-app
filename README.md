@@ -106,14 +106,15 @@ port conflicts, model paths and troubleshooting.
 
 ### Run the published image
 
-A verified prediction API image is available publicly as `2026.10.29.1`
-and `latest`; no registry login is required. It is an earlier release:
-**it predates authentication and house CRUD and does not include Streamlit**.
+A verified public API image is available as `2026.10.29.2` and `latest` through
+GHCR, including prediction, optional authentication, and SQLite house CRUD.
+No registry login is required.
+The [container guide](docs/containers.md#run-the-published-image) records the
+verified release and its exact digest. The API image does not run the Streamlit UI.
 Publishing an image does not host an API.
 
 Follow the [pinned-image run instructions](docs/containers.md#run-the-published-image)
-with the approved model mounted separately. Build from this checkout for the
-current API features. Keep either option localhost/private only.
+with the approved model mounted separately. Keep the running API localhost/private only.
 
 ## Technologies and why we used them
 
