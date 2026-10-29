@@ -109,6 +109,7 @@ that split. See [the evaluation evidence](notebook-baseline.md#model-training-an
 Evaluate grouped or time-based splits and performance across price/location
 groups before considering real-world use. Confirm dataset/model redistribution
 permission. Add authentication and operational limits before public hosting.
-A Streamlit interface and cloud deployment remain separate optional work,
-not requirements to finish the refactoring core. House CRUD now has its own
+The optional Streamlit interface now runs locally, and the API has been verified
+in a private Codespace. Neither is a public production deployment or a
+requirement to finish the refactoring core. House CRUD now has its own
 schemas and storage objects, separate from prediction.

@@ -23,6 +23,7 @@ For a quick overview, view the [five-slide refactoring summary (PDF)](docs/proje
 - **Regression tests:** controlled examples check that the refactor preserves the original preprocessing results.
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 - **Local Docker:** a non-root API image and Compose setup load the approved model from a read-only mount; container smoke checks have a separate CI job.
+- **Local Streamlit UI:** grouped house inputs, friendly labels and a price card reuse the same validated prediction service. No API call or training is needed.
 
 **Published:** a verified public GHCR image, tagged `2026.10.29.1` and `latest`, downloadable without logging in. [Run the published image](#run-the-published-image) with the approved model mounted read-only. Publishing did not deploy the API. That image predates authentication; do not expose it publicly. See [private Codespaces development](docs/codespaces.md) and [tasks.md](tasks.md).
 
@@ -174,7 +175,8 @@ mle-refactoring-project/
 │   ├── streamlit/
 │   │   ├── __init__.py           # Optional UI package
 │   │   ├── app.py                # Streamlit entry point
-│   │   └── page.py               # House form and prediction service wiring
+│   │   ├── form.py               # Grouped inputs and raw field collection
+│   │   └── page.py               # Validation, session service and price card
 │   ├── validation.py             # Cleaning and feature input checks
 │   ├── settings.py               # Pydantic logging settings
 │   └── logging_config.py         # Console logging setup
@@ -182,7 +184,8 @@ mle-refactoring-project/
 │   ├── conftest.py               # Shared fixtures from the existing CSV
 │   ├── king_county/              # Tests matching the Python package
 │   │   ├── streamlit/
-│   │   │   └── test_page.py      # Form and entry-point integration checks
+│   │   │   ├── test_form.py      # Layout, field keys and coordinate precision
+│   │   │   └── test_page.py      # Prediction, session and safe-error integration
 │   │   └── house_records/
 │   │       ├── conftest.py       # Shared sample house fields
 │   │       ├── test_schemas.py   # Unit checks for house validation
@@ -405,7 +408,7 @@ results remains deferred. Keep the local prototype bound to `127.0.0.1`.
 
 ## Project notes
 
-- [Final review](docs/final-review.md): independent audit findings, verification, and public-image release caveats.
+- [Final review and project closeout](docs/final-review.md): course coverage, independent audits, verification, and remaining permission/release caveats.
 - [Notebook-to-app walkthrough](docs/notebook-to-app.md): what we changed, how the objects fit, and what we learned.
 - [Design and diagrams](docs/design.md): responsibilities, notebook mapping, and prediction flow.
 - [Baseline reference](docs/notebook-baseline.md): preserved rules and regression checks.
