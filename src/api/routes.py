@@ -16,7 +16,7 @@ class HealthResult(BaseModel):
     """Report readiness of the model loaded during startup, not model quality."""
 
     status: Literal["ready"] = "ready"
-    model_version: str
+    model_version: str | None = None
 
 
 def get_prediction_service(request: Request) -> PredictionService:
@@ -27,10 +27,11 @@ def get_prediction_service(request: Request) -> PredictionService:
 Service = Annotated[PredictionService, Depends(get_prediction_service)]
 
 
-@router.get("/health", response_model=HealthResult)
-def health(service: Service) -> HealthResult:
+@router.get("/health", response_model=HealthResult, response_model_exclude_none=True)
+def health(request: Request, service: Service) -> HealthResult:
     """Return model readiness and version after successful startup."""
-    return HealthResult(model_version=service.model_version)
+    version = None if request.app.state.cloud_mode else service.model_version
+    return HealthResult(model_version=version)
 
 
 @router.post(
