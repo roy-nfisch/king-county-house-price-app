@@ -5,8 +5,8 @@
 The course's core task was to move data cleaning and feature engineering out
 of a notebook and into reusable Python code. We kept EDA and training in the
 notebooks. We then extended our project with a prediction API, tests, and Docker.
-The API predicts total house-sale price in USD; it does not implement the
-course's optional house CRUD/database application.
+The prediction API estimates total house-sale price in USD. Separate house CRUD
+routes store the course's five-field resource; they do not call the model.
 
 ## The journey
 
@@ -34,6 +34,10 @@ flowchart TD
 We used composition: objects have separate jobs and work together. A training
 service, database, and generic framework would add complexity without helping
 the current prediction use case.
+
+For house storage, HTTP routes call `HouseRepository`. Its SQLite queries and
+the five-field schemas live under `king_county/house_records/`, separate from FastAPI.
+This keeps storage reusable without adding database logic to prediction.
 
 ## Follow one request
 
@@ -105,5 +109,6 @@ that split. See [the evaluation evidence](notebook-baseline.md#model-training-an
 Evaluate grouped or time-based splits and performance across price/location
 groups before considering real-world use. Confirm dataset/model redistribution
 permission. Add authentication and operational limits before public hosting.
-CRUD, a Streamlit interface, and cloud deployment remain separate optional work,
-not requirements to finish the refactoring core.
+A Streamlit interface and cloud deployment remain separate optional work,
+not requirements to finish the refactoring core. House CRUD now has its own
+schemas and storage objects, separate from prediction.

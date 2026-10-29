@@ -6,6 +6,7 @@ services:
     environment:
       MODEL_PATH: /models/pipeline.skops
       LOG_LEVEL: INFO
+      DATABASE_PATH: /var/lib/king-county/houses.sqlite3
     volumes:
       - type: bind
         source: ${MODEL_FILE:-./model/versions/king-county-20261028T153712021211Z/pipeline.skops}
@@ -13,3 +14,6 @@ services:
         read_only: true
         bind:
           create_host_path: false
+      - house-data:/var/lib/king-county
+volumes:
+  house-data:

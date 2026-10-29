@@ -112,13 +112,20 @@ def test_malformed_or_non_object_json_returns_422(client, body):
     assert response.status_code == 422
 
 
-def test_startup_loads_once_for_all_requests(approved_artifact, house_payload):
+def test_startup_loads_once_for_all_requests(
+    approved_artifact, house_payload, tmp_path
+):
     """One worker reuses one verified pipeline rather than loading per request."""
     with patch.object(
         ModelArtifact, "load", autospec=True, return_value=approved_artifact.load()
     ) as load:
         with TestClient(
-            create_app(ApiSettings(model_path=approved_artifact.path))
+            create_app(
+                ApiSettings(
+                    model_path=approved_artifact.path,
+                    database_path=tmp_path / "houses.db",
+                )
+            )
         ) as client:
             for _ in range(2):
                 client.post("/predict", json=house_payload)

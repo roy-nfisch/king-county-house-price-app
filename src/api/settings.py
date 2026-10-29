@@ -12,6 +12,7 @@ class ApiSettings(AppSettings):
     """Extend logging settings with the path of the approved local artifact."""
 
     model_path: Path = DEFAULT_MODEL_PATH
+    database_path: Path = Path("houses.sqlite3")
 
     @classmethod
     def from_environment(cls) -> Self:
@@ -19,4 +20,5 @@ class ApiSettings(AppSettings):
         return cls(
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             model_path=Path(os.getenv("MODEL_PATH", str(DEFAULT_MODEL_PATH))),
+            database_path=Path(os.getenv("DATABASE_PATH", "houses.sqlite3")),
         )

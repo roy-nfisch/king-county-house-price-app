@@ -11,8 +11,10 @@ WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    MODEL_PATH=/models/pipeline.skops
-RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app
+    MODEL_PATH=/models/pipeline.skops \
+    DATABASE_PATH=/var/lib/king-county/houses.sqlite3
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app \
+    && mkdir -p /var/lib/king-county && chown app:app /var/lib/king-county
 COPY --from=builder /app/.venv /app/.venv
 USER app
 EXPOSE 8000

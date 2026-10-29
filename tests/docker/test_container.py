@@ -271,7 +271,7 @@ def test_compose_publishes_only_localhost(compose_api):
 @pytest.mark.docker
 def test_compose_model_mount_is_read_only(compose_api):
     """Keep the model at the configured container path and prevent writes."""
-    (mount,) = compose_api["volumes"]
+    mount = next(m for m in compose_api["volumes"] if m["type"] == "bind")
     assert mount["type"] == "bind"
     assert (
         mount["target"]
@@ -279,6 +279,37 @@ def test_compose_model_mount_is_read_only(compose_api):
         == "/models/pipeline.skops"
     )
     assert mount["read_only"] is True
+    assert any(
+        m["type"] == "volume" and m["target"] == "/var/lib/king-county"
+        for m in compose_api["volumes"]
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.docker
+def test_named_volume_persists_for_non_root(image):
+    """A fresh Docker volume is writable and survives a container replacement."""
+    volume = "king-county-test-" + uuid4().hex
+    mount = f"type=volume,source={volume},target=/var/lib/king-county"
+    create = (
+        "from king_county.house_records.repository import HouseRepository; "
+        "from king_county.house_records.schemas import HouseCreate; "
+        "from pathlib import Path; "
+        "r=HouseRepository(Path('/var/lib/king-county/houses.sqlite3')); "
+        "r.initialize(); "
+        "r.create(HouseCreate(bedrooms=3,bathrooms=1,sqft_living=100,grade=7,zipcode='98101'))"
+    )
+    read = (
+        "from king_county.house_records.repository import HouseRepository; from pathlib import Path; "
+        "print(HouseRepository(Path('/var/lib/king-county/houses.sqlite3')).get(1).zipcode)"
+    )
+    docker("volume", "create", volume)
+    try:
+        docker("run", "--rm", "--mount", mount, image, "python", "-c", create)
+        result = docker("run", "--rm", "--mount", mount, image, "python", "-c", read)
+        assert result.stdout.strip() == "98101"
+    finally:
+        docker("volume", "rm", volume)
 
 
 @pytest.mark.integration

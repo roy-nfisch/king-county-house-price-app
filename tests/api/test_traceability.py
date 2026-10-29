@@ -20,11 +20,15 @@ from king_county.prediction import PredictionError, PredictionService
 
 
 @pytest.fixture
-def traced_client(approved_artifact, caplog):
+def traced_client(approved_artifact, caplog, tmp_path):
     """Capture trace INFO records while exercising the real app and tiny model."""
     caplog.set_level(logging.INFO, logger="api.traceability")
     with TestClient(
-        create_app(ApiSettings(model_path=approved_artifact.path))
+        create_app(
+            ApiSettings(
+                model_path=approved_artifact.path, database_path=tmp_path / "houses.db"
+            )
+        )
     ) as client:
         yield client
 
@@ -218,11 +222,15 @@ def test_interrupted_requests_never_log_success(caplog, error, headers_started):
 )
 @pytest.mark.integration
 def test_prefixed_predictions_are_traced(
-    approved_artifact, house_payload, caplog, root_path, path
+    approved_artifact, house_payload, caplog, root_path, path, tmp_path
 ):
     """Trace the same route with proxy prefixes present or already stripped."""
     caplog.set_level(logging.INFO, logger="api.traceability")
-    app = create_app(ApiSettings(model_path=approved_artifact.path))
+    app = create_app(
+        ApiSettings(
+            model_path=approved_artifact.path, database_path=tmp_path / "houses.db"
+        )
+    )
     with TestClient(app, root_path=root_path) as client:
         response = client.post(path, json=house_payload)
     assert response.status_code == 200
