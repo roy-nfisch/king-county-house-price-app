@@ -86,7 +86,7 @@ that split. See [the evaluation evidence](notebook-baseline.md#model-training-an
 6. **Load only the approved artifact.** A code-pinned checksum and explicit
    custom-type allowlist protect loading. They do not prove model quality or
    grant permission to redistribute training-derived information.
-7. **Separate publishing from deployment.** A private GHCR image is a packaged
+7. **Separate publishing from deployment.** A public GHCR image is a packaged
    runtime, not a public service. It still needs the approved model and should
    bind only to localhost for this unauthenticated demonstration.
 8. **Audit each task with a different model.** Our review rule going forward is

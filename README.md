@@ -4,13 +4,13 @@
 [![Tests: unit, integration, contract](https://img.shields.io/badge/tests-unit%20%7C%20integration%20%7C%20contract-blue)](#test-categories-and-ci-stages)
 [![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](#run-locally)
 [![Docker: local](https://img.shields.io/badge/Docker-local-2496ED?logo=docker&logoColor=white)](#run-with-docker-compose)
-[![GHCR: private image](https://img.shields.io/badge/GHCR-private%20image-blue)](#run-the-published-image)
+[![GHCR: public image](https://img.shields.io/badge/GHCR-public%20image-blue)](#run-the-published-image)
 
 We refactored a house-price notebook into a small, object-oriented Python package and a working prediction API. Preprocessing is reusable and tested; training stays in the notebook, not in a training service. See [how we moved from notebook to app](docs/notebook-to-app.md).
 
 This is a portfolio project developed during the neue fische MLE course. It builds on the supplied King County notebook and dataset, with our own Python package, validation, tests, and CI.
 
-For a quick overview, view the [five-slide refactoring summary (PDF)](docs/project-overview.pdf): object responsibilities, behaviour-preserving changes, testing, and delivery challenges.
+For a quick overview, view the [five-slide refactoring summary (PDF)](docs/project-overview.pdf): object responsibilities, behaviour-preserving changes, testing, and delivery challenges. The slides record the final review before public image release; current release instructions are below.
 
 ## What works today
 
@@ -24,7 +24,7 @@ For a quick overview, view the [five-slide refactoring summary (PDF)](docs/proje
 - **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
 - **Local Docker:** a non-root API image and Compose setup load the approved model from a read-only mount; container smoke checks have a separate CI job.
 
-**Published:** a verified private GHCR image, tagged `2026.10.29` and `latest`. [Run the published image](#run-the-published-image) with the approved model mounted read-only. Publishing did not deploy the API; cloud deployment remains deferred. The API has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
+**Published:** a verified public GHCR image, tagged `2026.10.29.1` and `latest`, downloadable without logging in. [Run the published image](#run-the-published-image) with the approved model mounted read-only. Publishing did not deploy the API; cloud deployment remains deferred. The API has no authentication; do not expose it publicly as-is. See [tasks.md](tasks.md) for progress.
 
 ## The flow
 
@@ -275,7 +275,7 @@ The Docker test file has 14 cases: seven helper regressions, four real-container
 
 ### Publish to GitHub Container Registry
 
-The first [publication run](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40786740479) passed from `main` at commit `f213617`. It published `2026.10.29`, `sha-f2136173d94002907617c6e40e38eceaf6a5a025`, and `latest`. The package is now **private**, verified in its settings. See the [image page](https://github.com/roy-nfisch/mle-refactoring-project/pkgs/container/mle-refactoring-project) while signed into an account with access. Health, prediction, digest pull, and image identity checks passed; no API was deployed.
+The corrected [publication run](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40792312600) passed from `main` at commit `563785d`. It published `2026.10.29.1`, `sha-563785d9d511184024db99b9490bdd05896c4711`, and `latest`. All 466 tests passed, including the complete MIT notice check in the container. Post-publish health, prediction, digest pull, and image identity checks also passed; no API was deployed. See the [image page](https://github.com/roy-nfisch/mle-refactoring-project/pkgs/container/mle-refactoring-project).
 
 For a future release, open **Actions → Publish API image → Run workflow**, select `main`, and enter a new version using `YYYY.MM.DD`. For another release on the same date, append `.1`, `.2`, etc. Dates must be real calendar dates with two-digit months/days, and an optional suffix must be a positive integer without leading zeros. Pushes and pull requests do not publish images, and a manual run from another branch is rejected.
 
@@ -287,45 +287,27 @@ After pushing, it pulls by registry digest and checks health and prediction with
 
 ### Run the published image
 
-**Public download is pending.** Final review found that the first image omits
-the project's MIT notice. The packaging fix and regression checks are prepared
-on this branch, but the published `2026.10.29` image is unchanged and stays
-private. Review/merge the fix, publish a new version (for example,
-`2026.10.29.1`), and verify it before changing package visibility. Visibility is
-package-wide: old versions would become public too. Explicitly approve removal
-of the old deficient version, or choose a separate public package containing
-only corrected images. Do not silently delete or overwrite the first version.
-The instructions below describe the current
-private image; anonymous download instructions will follow the corrected release.
+The corrected `2026.10.29.1` image includes the project's MIT notice and is
+publicly downloadable. The old `2026.10.29` version and its associated manifests
+were removed rather than overwritten. No GitHub account, token, or Docker login
+is needed to pull the public image.
 
-You need Docker running, a checkout of this repository with the approved model,
-and a GitHub account that can read the private package. No local Python install
+You need Docker running and a checkout of this repository with the approved model. No local Python install
 or model retraining is needed. Run these commands from the project root.
 
-**1. Log in once.** For a local private-image download, use a GitHub personal
-access token **(classic)** with `read:packages`, belonging to an account with
-package access. Enter your GitHub username below; at the password prompt, paste
-the token, **not your GitHub password**. Never put it in the README or commit it.
-The publishing workflow instead uses its automatic `GITHUB_TOKEN`; you do not
-need a personal token for workflow publication.
-
-```bash
-docker login ghcr.io --username YOUR_GITHUB_USERNAME
-```
-
-**2. Pull and start the verified image.** This digest pins the exact first image;
-the `2026.10.29` and `latest` tags currently point to it. The image is Linux amd64,
+**1. Pull and start the verified image.** This digest pins the exact corrected image;
+the `2026.10.29.1` and `latest` tags currently point to it. The image is Linux amd64,
 so an ARM Mac uses Docker's amd64 emulation. The model stays outside the image.
 
 ```bash
-KING_COUNTY_IMAGE=ghcr.io/roy-nfisch/mle-refactoring-project@sha256:dd2e189dd437878d3a09f7a18e89cd0b063126a0721f97b3641894c444327311
+KING_COUNTY_IMAGE=ghcr.io/roy-nfisch/mle-refactoring-project@sha256:95bf5253cc3a7288651876e7abbcb70df933b7c3d16ce100d3421a9726ad672f
 docker pull --platform linux/amd64 "$KING_COUNTY_IMAGE"
 docker run --rm --platform linux/amd64 -p 127.0.0.1:7003:8000 \
   --mount "type=bind,source=$(pwd)/model/versions/king-county-20261028T153712021211Z/pipeline.skops,target=/models/pipeline.skops,readonly" \
   "$KING_COUNTY_IMAGE"
 ```
 
-**3. Check it in another terminal**, also from the project root, once startup
+**2. Check it in another terminal**, also from the project root, once startup
 finishes. Keep the first terminal running. Open <http://127.0.0.1:7003/docs> or:
 
 ```bash
@@ -338,11 +320,13 @@ Prediction returns `predicted_price`, `currency`, and `model_version`. Press
 Ctrl+C in the first terminal to stop; `--rm` removes that container. If port 7003
 is occupied, change only the host port (for example, `7004:8000`) and use that
 port in the URLs. A missing model or checksum mismatch stops startup; do not
-bypass the approval check. `denied`/`unauthorized` means the login, token scope,
-or package access needs checking. See [GitHub's registry authentication guide](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
+bypass the approval check. If stale saved GHCR credentials cause an authentication
+error, try pulling with an empty temporary Docker configuration instead of
+creating a token. Keep the repository/model files separate from that configuration.
 
-Dataset/model redistribution permission remains an open review item. Private
-runtime publication does not clear the separate public-release review.
+The image contains no model or dataset. Their redistribution permissions remain
+an open provenance review item; public runtime publication does not establish
+permission to redistribute the data or the model's retained training coordinates.
 
 ### Prediction traceability
 
