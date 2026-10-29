@@ -10,6 +10,8 @@ We refactored a house-price notebook into a small, object-oriented Python packag
 
 This is a portfolio project developed during the neue fische MLE course. It builds on the supplied King County notebook and dataset, with our own Python package, validation, tests, and CI.
 
+For a quick overview, view the [five-slide refactoring summary (PDF)](docs/project-overview.pdf): object responsibilities, behaviour-preserving changes, testing, and delivery challenges.
+
 ## What works today
 
 - **Reusable preprocessing:** `HouseCleaner` and `HouseFeatureEngineer` run together in a scikit-learn pipeline.
@@ -162,6 +164,7 @@ mle-refactoring-project/
 │   ├── workflows/                # Offline registry checks and smoke-check failures
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
+│   ├── project-overview.pdf       # Five-slide project, learning and challenges summary
 │   ├── final-review.md            # Independent audit, fixes and release caveats
 │   ├── notebook-to-app.md         # Project journey, decisions, checks and limitations
 │   ├── design.md                 # Class responsibilities and planned app
