@@ -8,18 +8,24 @@ import pytest
 pytest.importorskip("streamlit", reason="UI tests require the ui extra")
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
-from king_county import ui
 from king_county.cleaning import HouseCleaner
 from king_county.features import HouseFeatureEngineer
 from king_county.prediction import PredictionService
+from king_county.schemas import HouseInput
+from king_county.streamlit import page as ui
 
 pytestmark = pytest.mark.integration
-APP = ui.ROOT / "src/streamlit_app.py"
+APP = ui.ROOT / "src/king_county/streamlit/app.py"
 
 
-def test_valid_form_reuses_service_without_training(approved_artifact, monkeypatch):
+def test_valid_form_reuses_service_without_training(
+    approved_artifact, monkeypatch, house_payload
+):
     """A valid example yields USD and a model version across repeated submissions."""
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
+    expected = PredictionService(approved_artifact).predict(
+        HouseInput.model_validate(house_payload)
+    )
     app = AppTest.from_file(str(APP)).run()
     with (
         patch.object(HouseCleaner, "fit", side_effect=AssertionError("No fit")),
@@ -32,7 +38,9 @@ def test_valid_form_reuses_service_without_training(approved_artifact, monkeypat
         app.button[0].click().run()
         app.button[0].click().run()
     assert not app.exception
-    assert "USD" in app.success[0].value
+    assert app.success[0].value == (
+        f"Estimated price: ${expected.predicted_price:,.2f} USD"
+    )
     assert any("Model version:" in caption.value for caption in app.caption)
     load.assert_called_once()
 
@@ -91,7 +99,9 @@ def test_prediction_failure_is_safe(approved_artifact, monkeypatch):
     assert "secret" not in app.error[0].value
 
 
-def test_nullable_fields_and_leading_zero_zip(approved_artifact, monkeypatch):
+def test_nullable_fields_and_leading_zero_zip(
+    approved_artifact, monkeypatch, house_payload
+):
     """Unknown values and the ZIP string reach the shared service unchanged."""
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
     app = AppTest.from_file(str(APP)).run()
@@ -106,10 +116,10 @@ def test_nullable_fields_and_leading_zero_zip(approved_artifact, monkeypatch):
         )
         app.button[0].click().run()
     house = predict.call_args.args[1]
-    assert house.zipcode == "01234"
-    assert (
-        house.waterfront is None and house.view is None and house.yr_renovated is None
+    expected = dict(
+        house_payload, zipcode="01234", waterfront=None, view=None, yr_renovated=None
     )
+    assert house.model_dump() == expected
     assert app.success and not app.exception
 
 
@@ -125,10 +135,12 @@ def test_altered_model_fails_without_caching(approved_artifact, monkeypatch):
     assert "prediction_service" not in app.session_state
 
 
-def test_invalid_example_is_safe(tmp_path, monkeypatch):
-    """Valid JSON with the wrong shape fails before rendering widgets."""
+@pytest.mark.parametrize("content", [None, "{bad", '{"bedrooms": 3}'])
+def test_invalid_example_is_safe(tmp_path, monkeypatch, content):
+    """Missing, malformed and wrong-shape examples fail without leaking paths."""
     path = tmp_path / "private-example.json"
-    path.write_text('{"bedrooms": 3}', encoding="utf-8")
+    if content is not None:
+        path.write_text(content, encoding="utf-8")
     monkeypatch.setattr(ui, "EXAMPLE_PATH", path)
     app = AppTest.from_file(str(APP)).run()
     assert not app.exception

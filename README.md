@@ -62,7 +62,7 @@ From the project root, install the UI extra and start the local app:
 
 ```bash
 uv sync --locked --extra ui
-uv run --locked --extra ui streamlit run src/streamlit_app.py --server.address 127.0.0.1
+uv run --locked --extra ui streamlit run src/king_county/streamlit/app.py --server.address 127.0.0.1
 ```
 
 The form starts with [examples/house.json](examples/house.json), validates all
@@ -118,7 +118,7 @@ The development-only `pytest-xdist` plugin runs non-Docker integration tests wit
 
 Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. Container smoke tests live in `tests/docker/` and skip unless `DOCKER_TEST_IMAGE` names a built image. `tests/workflows/` covers release checks offline: mocked registry checks are unit tests, and the smoke-check shell with Docker/curl stand-ins is integration tested. These tests never log in or publish.
 
-UI tests in `tests/king_county/test_ui.py` require `uv run --locked --extra ui pytest`; they
+UI tests in `tests/king_county/streamlit/` require `uv run --locked --extra ui pytest`; they
 explicitly skip when the extra is absent. CI installs the extra for category
 test jobs; the API Docker image remains independent of it.
 
@@ -171,14 +171,18 @@ mle-refactoring-project/
 │   │   └── repository.py         # SQLite house storage without HTTP dependencies
 │   ├── prediction.py             # Shared prediction service; no training
 │   ├── schemas.py                # Pydantic house and price contracts
-│   ├── ui.py                     # Optional Streamlit form and service wiring
+│   ├── streamlit/
+│   │   ├── __init__.py           # Optional UI package
+│   │   ├── app.py                # Streamlit entry point
+│   │   └── page.py               # House form and prediction service wiring
 │   ├── validation.py             # Cleaning and feature input checks
 │   ├── settings.py               # Pydantic logging settings
 │   └── logging_config.py         # Console logging setup
 ├── tests/
 │   ├── conftest.py               # Shared fixtures from the existing CSV
 │   ├── king_county/              # Tests matching the Python package
-│   │   ├── test_ui.py            # Streamlit form integration checks
+│   │   ├── streamlit/
+│   │   │   └── test_page.py      # Form and entry-point integration checks
 │   │   └── house_records/
 │   │       ├── conftest.py       # Shared sample house fields
 │   │       ├── test_schemas.py   # Unit checks for house validation
@@ -211,7 +215,6 @@ mle-refactoring-project/
 ├── assets/                       # Notebook images
 ├── examples/house.json           # Feature-only record from the supplied CSV
 ├── .devcontainer/                # Private Codespaces development environment
-├── src/streamlit_app.py          # Local UI entry point
 ├── King-County.ipynb              # Original EDA and modelling reference
 ├── King-County-refactored.ipynb    # Preprocessing, training, evaluation and export
 ├── pyproject.toml                # Dependencies and development configuration

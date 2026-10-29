@@ -10,7 +10,7 @@ from king_county.artifacts import DEFAULT_MODEL_PATH, ModelArtifact, ModelLoadEr
 from king_county.prediction import PredictionError, PredictionService
 from king_county.schemas import HouseInput
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 MODEL_PATH = ROOT / DEFAULT_MODEL_PATH
 EXAMPLE_PATH = ROOT / "examples/house.json"
 logger = logging.getLogger(__name__)
