@@ -197,7 +197,7 @@ API. The Ports view showed port 8000 as **Private**. In the GitHub-authenticated
 browser, `/health` returned ready and Swagger's `POST /predict` returned HTTP
 200 with `323409.4883333101` USD and the approved model version above.
 
-T15's private development checks are complete. GitHub confirmed the Codespace
+The private development checks are complete. GitHub confirmed the Codespace
 was stopped again afterwards. No public port was enabled, new credentials
 created, or billing settings changed. Resume this workspace from the owner's
 Codespaces dashboard and start the API again for another demo. This is not an

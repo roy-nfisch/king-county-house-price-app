@@ -18,6 +18,9 @@ dependencies = [
     "uvicorn>=0.30,<1",
 ]
 
+[project.optional-dependencies]
+ui = ["streamlit>=1.50,<2"]
+
 [dependency-groups]
 dev = [
     "httpx2>=2.16,<3",

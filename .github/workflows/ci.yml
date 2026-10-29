@@ -57,9 +57,9 @@ jobs:
       - name: Install project Python and test dependencies
         run: |
           uv python install
-          uv sync --locked
+          uv sync --locked --extra ui
       - name: Run selected test category
-        run: uv run --locked pytest tests/ -m "${{ matrix.category }} and not docker" -n ${{ matrix.workers }} --dist loadfile
+        run: uv run --locked --extra ui pytest tests/ -m "${{ matrix.category }} and not docker" -n ${{ matrix.workers }} --dist loadfile
 
   docker:
     needs: checks

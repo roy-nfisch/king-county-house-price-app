@@ -72,7 +72,7 @@ The downloaded image contains the complete original MIT notice. The old tag,
 index digest, platform digest, and attestation digest all return missing-manifest
 errors. The corrected version and its two associated manifests remain intact.
 
-T13's engineering review and runtime release are complete. The separate
+The engineering review and runtime release are complete. The separate
 dataset/model provenance question remains unresolved in `tasks.md`; no legal
 redistribution clearance is claimed. Local release checks ran only a temporary
 Python process to inspect the installed license, not an API server.
