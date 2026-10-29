@@ -38,15 +38,15 @@ flowchart TB
         CA --> CD[SQLite in Codespace workspace]
     end
 
-    B[Our browser signed in to GitHub] -. Private forwarded port: verification pending .-> CA
+    B[Our browser signed in to GitHub] -->|Verified private forwarded port| CA
     CA --> S[Stop Codespace after use: API becomes unavailable]
 ```
 
 The two paths use the same Python application, not two implementations. Each
 has its own files and SQLite database; they do not automatically sync records.
 **Port forwarding** connects our browser to the remote API for testing.
-The dashed connection is the intended private access path, not a completed
-verification; see the live check record below.
+The private connection was verified with health and prediction requests through
+the browser; see the live check record below.
 See [GitHub's port-forwarding guide](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).
 
 `API_MODE=local` and `API_MODE=cloud` select authentication rules, not hosting.
@@ -58,7 +58,7 @@ access check. The commands and token rules are explained below.
 
 This is a private, manually started development environment, not an always-on
 production service. A two-core Europe West Codespace was created and its API
-tested on 29 October 2026. Private browser forwarding still needs verification;
+tested through a private forwarded browser URL on 29 October 2026;
 the Codespace has been stopped, not deleted, to conserve the included allowance.
 The repository's dev container installs the locked dependencies with uv 0.13.5;
 it does not start the server automatically. The existing tracked model is loaded
@@ -174,9 +174,9 @@ with a new secret and update clients to rotate it.
 
 - [x] Create the approved Codespace and verify cost controls, model startup,
   health and prediction from its terminal.
-- [ ] Verify private port visibility and health/prediction through the forwarded
-  browser endpoint. The Ports view continued to show no forwarded ports after
-  entering 8000; do not treat terminal checks as proof of browser access.
+- [x] Verify private port visibility and health/prediction through the forwarded
+  browser endpoint. The Ports view showed port 8000 as Private, browser health
+  returned ready, and Swagger prediction returned HTTP 200.
 - [x] Owner: `roy-nfisch`. Owner-only access is intended. Stop through the
   Codespaces dashboard after use; follow the backup guidance above before deletion.
 
@@ -189,15 +189,26 @@ requests returned `status: ready` and an example prediction of approximately
 No training was run. GitHub confirmed the Codespace was stopped after testing.
 Its retained workspace still consumes storage allowance.
 
-The editor's forwarding step is unresolved. No public port was enabled, no
-credentials were created, and billing settings were not changed. Resume the
-existing Codespace from the owner's dashboard rather than creating another one,
-start the server again, and finish the private forwarding checks above. The
-development image does not include `gh`; the optional CLI commands above are
-for a trusted local installation with the required Codespaces permission.
+On the follow-up check, stopping and resuming the same Codespace restored port
+forwarding. No source or dev-container configuration change was needed; the
+underlying cause of the earlier editor failure was not established. We updated
+the clean checkout to `8946565`, installed locked dependencies and started the
+API. The Ports view showed port 8000 as **Private**. In the GitHub-authenticated
+browser, `/health` returned ready and Swagger's `POST /predict` returned HTTP
+200 with `323409.4883333101` USD and the approved model version above.
 
-T15 remains open until those live checks pass. The existing public GHCR image
-predates authentication and is not a substitute for this private environment.
+T15's private development checks are complete. GitHub confirmed the Codespace
+was stopped again afterwards. No public port was enabled, new credentials
+created, or billing settings changed. Resume this workspace from the owner's
+Codespaces dashboard and start the API again for another demo. This is not an
+always-on production service. The existing public GHCR image predates
+authentication and is not a substitute for this private environment.
+
+If the Ports view is empty, first stop and resume the existing Codespace and
+wait for its remote connection to finish. Confirm port 8000 is Private before
+opening it; never switch to Public as a workaround. The development image does
+not include `gh`; the optional CLI commands above are for a trusted local
+installation with the required Codespaces permission.
 
 ## Preparation review
 
@@ -207,4 +218,5 @@ grown too long. Cloud mode now requires at least 32 token characters, and the
 model lifespan was extracted from the factory. Length alone does not guarantee
 entropy. The reviewer independently built the development image and verified
 Python 3.13.18 and uv 0.13.5 in it, and ran the focused authentication and
-dev-container checks. This does not establish a successful Codespace deployment.
+dev-container checks. That preparation review was local; the live checks above
+separately verify the private Codespaces workflow.

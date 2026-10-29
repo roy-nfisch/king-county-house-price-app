@@ -374,8 +374,8 @@ If processing is interrupted, the outcome is `failed` even if a 200 response had
 The source supports optional bearer authentication for HTTP routes except `/health`;
 cloud mode requires a token. See [private Codespaces development](docs/codespaces.md)
 for prerequisites and operating instructions. A private Codespace passed direct
-health and prediction checks and was then stopped. Browser port forwarding is
-still unverified, so cloud deployment is not yet complete. Saving prediction
+health and prediction checks both directly and through a private browser port,
+and was then stopped. This is a development workspace, not production hosting. Saving prediction
 results remains deferred. Keep the local prototype bound to `127.0.0.1`.
 
 ## Project notes
