@@ -135,6 +135,7 @@ mle-refactoring-project/
 ├── src/api/
 │   ├── __init__.py
 │   ├── errors.py                 # Safe 422 errors without raw input values
+│   ├── houses.py                 # Five-field CRUD contracts, repository and routes
 │   ├── main.py                   # App factory and one-time startup loading
 │   ├── request_validation.py     # Reject duplicate JSON keys before prediction
 │   ├── routes.py                 # Predict, readiness and error responses
@@ -165,6 +166,7 @@ mle-refactoring-project/
 │   └── fixtures/                 # Fixed expectations, not a duplicate CSV
 ├── docs/
 │   ├── project-overview.pdf       # Five-slide project, learning and challenges summary
+│   ├── house-crud.md              # House storage contract and persistence
 │   ├── final-review.md            # Independent audit, fixes and release caveats
 │   ├── notebook-to-app.md         # Project journey, decisions, checks and limitations
 │   ├── design.md                 # Class responsibilities and planned app
@@ -254,7 +256,7 @@ docker compose down
 
 Open [Docker API docs](http://127.0.0.1:7003/docs). Host port **7003** forwards to **8000 inside the container**; the API listens on all container interfaces, but Compose publishes it only on localhost. If 7003 is busy, use `API_PORT=7004 docker compose up --build --wait` and change the curl/browser port accordingly.
 
-The non-root runtime contains the installed package and locked runtime dependencies, not the CSV, notebooks, tests, or model. Compose mounts the approved artifact read-only at `/models/pipeline.skops`; no database, training service, or API key is needed. The health check succeeds only after startup loads the model. A missing host file fails the mount; changed/unapproved bytes fail application startup. Check `docker compose logs api` if startup fails.
+The non-root runtime contains the installed package and locked runtime dependencies, not the CSV, notebooks, tests, model, or stored records. Compose mounts the approved artifact read-only at `/models/pipeline.skops` and keeps SQLite records in a named volume. No external database, training service, or API key is needed. The health check succeeds only after startup loads the model and initializes storage. A missing host file fails the mount; changed/unapproved bytes fail application startup. Check `docker compose logs api` if startup fails.
 
 To relocate the same approved model, set `MODEL_FILE=/absolute/path/pipeline.skops` before the Compose command. This changes only the host file location, **not** its trusted checksum. The default image command performs the usual code-pinned verification; no new checksum environment override is provided.
 
@@ -271,7 +273,7 @@ These tests reuse the existing temporary model fixture. The healthy test process
 
 A small `DockerContainer` test helper owns creation and cleanup, including client timeouts and startup failures. Readiness requires Docker's actual health status; failures include both stdout and stderr. Checks also pin Compose's localhost port and read-only model mount with missing-file protection. Helper regression tests run without Docker; real-container and Compose checks require `DOCKER_TEST_IMAGE`. This checks packaging and HTTP wiring, not production model quality or deployment readiness.
 
-The Docker test file has 14 cases: seven helper regressions, four real-container checks (license notice, prediction, checksum rejection, timeout cleanup), and three Compose configuration checks. Invalid-request behaviour stays in the existing API tests instead of being repeated in Docker.
+The Docker test file has 15 cases: seven helper regressions, five real-container checks (including named-volume persistence), and three Compose configuration checks. Invalid-request behaviour stays in the existing API tests instead of being repeated in Docker.
 
 ### Publish to GitHub Container Registry
 
@@ -367,4 +369,5 @@ Docker packaging is implemented. Keep this local prototype bound to `127.0.0.1`.
 - [Task list](tasks.md): completed work and next steps.
 - [Original assignment](project-description.md): the course requirements behind this project.
 
-The course's optional CRUD/database example is not part of this project's current implementation. Its local reference copy is excluded from Git. The current application predicts prices; it does not store or edit house records.
+The separate [house CRUD API](docs/house-crud.md) stores five fields in SQLite.
+These records are not prediction inputs: prediction still requires all 17 fields.

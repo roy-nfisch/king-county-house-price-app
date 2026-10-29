@@ -183,3 +183,5 @@ Thumbs.db
 
 # Local course reference; not part of the portfolio application
 /bonus_solution/
+*.sqlite3
+*.sqlite3-journal
