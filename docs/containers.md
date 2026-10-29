@@ -27,22 +27,22 @@ For test commands and container-test design, see [testing and CI](testing.md#con
 
 ## Run the published image
 
-The corrected `2026.10.29.1` image includes the project's MIT notice and is
-publicly downloadable. The old `2026.10.29` version and its associated manifests
-were removed rather than overwritten. No GitHub account, token, or Docker login
-is needed to pull the public image.
+The verified `2026.10.29.2` image includes prediction, optional authentication,
+SQLite house CRUD, and the project's MIT notice. No GitHub account, token, or
+Docker login is needed to pull it. It runs the API, not the Streamlit UI.
 
 You need Docker running and a checkout of this repository with the approved model. No local Python install
 or model retraining is needed. Run these commands from the project root.
 
 **1. Pull and start the verified image.** This digest pins the exact corrected image;
-the `2026.10.29.1` and `latest` tags currently point to it. The image is Linux amd64,
+the `2026.10.29.2` and `latest` tags currently point to it. The image is Linux amd64,
 so an ARM Mac uses Docker's amd64 emulation. The model stays outside the image.
 
 ```bash
-KING_COUNTY_IMAGE=ghcr.io/roy-nfisch/mle-refactoring-project@sha256:95bf5253cc3a7288651876e7abbcb70df933b7c3d16ce100d3421a9726ad672f
+KING_COUNTY_IMAGE=ghcr.io/roy-nfisch/mle-refactoring-project@sha256:6f3eef9f7655b34a2934112da6eef84e071941d61d684f63a0ab5303458fd6fc
 docker pull --platform linux/amd64 "$KING_COUNTY_IMAGE"
 docker run --rm --platform linux/amd64 -p 127.0.0.1:7003:8000 \
+  --mount type=volume,source=king-county-houses,target=/var/lib/king-county \
   --mount "type=bind,source=$(pwd)/model/versions/king-county-20261028T153712021211Z/pipeline.skops,target=/models/pipeline.skops,readonly" \
   "$KING_COUNTY_IMAGE"
 ```
@@ -64,13 +64,18 @@ bypass the approval check. If stale saved GHCR credentials cause an authenticati
 error, try pulling with an empty temporary Docker configuration instead of
 creating a token. Keep the repository/model files separate from that configuration.
 
+The named volume keeps SQLite house records after the container stops. This
+command uses local mode without authentication and binds only to localhost.
+For private cloud use, configure `API_MODE=cloud` and a strong `API_TOKEN` as
+described in the API guide; do not expose this local example publicly.
+
 The image contains no model or dataset. Their redistribution permissions remain
 an open provenance review item; public runtime publication does not establish
 permission to redistribute the data or the model's retained training coordinates.
 
 ## Publish to GitHub Container Registry
 
-The corrected [publication run](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40792312600) passed from `main` at commit `563785d`. It published `2026.10.29.1`, `sha-563785d9d511184024db99b9490bdd05896c4711`, and `latest`. All 466 tests passed, including the complete MIT notice check in the container. Post-publish health, prediction, digest pull, and image identity checks also passed; no API was deployed. See the [image page](https://github.com/roy-nfisch/mle-refactoring-project/pkgs/container/mle-refactoring-project).
+The [publication run](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40954008302) passed from `main` at commit `8a5e420`. It published `2026.10.29.2`, its commit tag, and `latest`. Published-image health, prediction, CRUD, digest pull, and image identity checks passed before promotion to `latest`. The temporary verification container was removed; no API was deployed. See the [image page](https://github.com/roy-nfisch/mle-refactoring-project/pkgs/container/mle-refactoring-project).
 
 For a future release, open **Actions → Publish API image → Run workflow**, select `main`, and enter a new version using `YYYY.MM.DD`. For another release on the same date, append `.1`, `.2`, etc. Dates must be real calendar dates with two-digit months/days, and an optional suffix must be a positive integer without leading zeros. Pushes and pull requests do not publish images, and a manual run from another branch is rejected.
 
