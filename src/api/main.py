@@ -9,12 +9,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.errors import invalid_request
-from api.houses import HouseRepository
 from api.houses import router as house_router
 from api.routes import router
 from api.settings import ApiSettings
 from api.traceability import PredictionTraceMiddleware
 from king_county.artifacts import ModelArtifact
+from king_county.house_records.repository import HouseRepository
 from king_county.logging_config import configure_logging
 from king_county.prediction import PredictionService
 

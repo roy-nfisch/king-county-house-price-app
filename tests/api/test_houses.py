@@ -6,9 +6,9 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from api.houses import HouseRepository
 from api.main import create_app
 from api.settings import ApiSettings
+from king_county.house_records.repository import HouseRepository
 
 HOUSE = {
     "bedrooms": 3,
@@ -61,67 +61,6 @@ def test_missing_house(client, method):
         "/houses/1", **({"json": HOUSE} if method == "put" else {})
     )
     assert response.status_code == 404
-
-
-@pytest.mark.contract
-@pytest.mark.parametrize(
-    "field,value",
-    [
-        ("bedrooms", 0),
-        ("bedrooms", 20),
-        ("bathrooms", 0),
-        ("bathrooms", 20),
-        ("sqft_living", 100),
-        ("sqft_living", 2**53 - 1),
-        ("grade", 1),
-        ("grade", 13),
-        ("zipcode", "12345"),
-        ("zipcode", "1234567890"),
-    ],
-)
-def test_valid_boundaries(client, field, value):
-    """Both ends of each documented field range are accepted."""
-    response = client.post("/houses", json={**HOUSE, field: value})
-    assert response.status_code == 201
-    assert response.json()[field] == value
-
-
-@pytest.mark.contract
-@pytest.mark.parametrize(
-    "field,value",
-    [
-        ("bedrooms", -1),
-        ("bedrooms", 21),
-        ("bedrooms", True),
-        ("bedrooms", "1"),
-        ("bathrooms", -0.1),
-        ("bathrooms", 20.1),
-        ("sqft_living", 99),
-        ("sqft_living", 2**53),
-        ("sqft_living", 100.5),
-        ("grade", 0),
-        ("grade", 14),
-        ("zipcode", "1234"),
-        ("zipcode", "12345678901"),
-    ],
-)
-def test_invalid_boundaries(client, field, value):
-    """Out-of-range or incorrectly typed fields cannot be stored."""
-    assert client.post("/houses", json={**HOUSE, field: value}).status_code == 422
-    assert client.get("/houses").json() == []
-
-
-@pytest.mark.contract
-@pytest.mark.parametrize("field", list(HOUSE))
-@pytest.mark.parametrize("kind", ["missing", "null"])
-def test_required_nonnull_fields(client, field, kind):
-    """Every field must be present and non-null."""
-    payload = HOUSE.copy()
-    if kind == "missing":
-        del payload[field]
-    else:
-        payload[field] = None
-    assert client.post("/houses", json=payload).status_code == 422
 
 
 @pytest.mark.contract
@@ -183,17 +122,6 @@ def test_pagination(client, created_house):
     assert [h["id"] for h in client.get("/houses?limit=1&offset=1").json()] == [2]
     assert len(client.get("/houses?limit=100&offset=0").json()) == 3
     assert client.get("/houses?offset=3").json() == []
-
-
-@pytest.mark.integration
-def test_literal_sql_value(client):
-    """A SQL-like zipcode is stored literally and cannot change the table."""
-    literal = "x';--"
-    assert (
-        client.post("/houses", json={**HOUSE, "zipcode": literal}).json()["zipcode"]
-        == literal
-    )
-    assert client.get("/houses/1").json()["zipcode"] == literal
 
 
 @pytest.mark.integration

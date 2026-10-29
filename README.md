@@ -135,7 +135,7 @@ mle-refactoring-project/
 ├── src/api/
 │   ├── __init__.py
 │   ├── errors.py                 # Safe 422 errors without raw input values
-│   ├── houses.py                 # Five-field CRUD contracts, repository and routes
+│   ├── houses.py                 # HTTP routes for house CRUD
 │   ├── main.py                   # App factory and one-time startup loading
 │   ├── request_validation.py     # Reject duplicate JSON keys before prediction
 │   ├── routes.py                 # Predict, readiness and error responses
@@ -146,6 +146,10 @@ mle-refactoring-project/
 │   ├── artifacts.py              # Code-pinned checksum and verified loader
 │   ├── cleaning.py               # Copy-first cleaning rules
 │   ├── features.py               # Fitted distances and ordered features
+│   ├── house_records/
+│   │   ├── __init__.py
+│   │   ├── schemas.py            # Five-field create, update and output models
+│   │   └── repository.py         # SQLite house storage without HTTP dependencies
 │   ├── prediction.py             # Shared prediction service; no training
 │   ├── schemas.py                # Pydantic house and price contracts
 │   ├── validation.py             # Cleaning and feature input checks
@@ -154,9 +158,14 @@ mle-refactoring-project/
 ├── tests/
 │   ├── conftest.py               # Shared fixtures from the existing CSV
 │   ├── king_county/              # Tests matching the Python package
+│   │   └── house_records/
+│   │       ├── conftest.py       # Shared sample house fields
+│   │       ├── test_schemas.py   # Unit checks for house validation
+│   │       └── test_repository.py # Direct SQLite persistence checks
 │   ├── api/                      # Shared client, API contracts, HTTP and settings
 │   │   ├── conftest.py           # Shared API client with a temporary approved model
 │   │   ├── test_contract.py      # Public request, response and error contracts
+│   │   ├── test_houses.py        # House HTTP contracts, errors and app lifecycle
 │   │   ├── test_routes.py        # Startup, prediction and HTTP failure handling
 │   │   ├── test_settings.py      # API configuration and environment checks
 │   │   └── test_traceability.py  # Request IDs, trace metadata and privacy

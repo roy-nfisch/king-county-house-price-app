@@ -292,14 +292,15 @@ def test_named_volume_persists_for_non_root(image):
     volume = "king-county-test-" + uuid4().hex
     mount = f"type=volume,source={volume},target=/var/lib/king-county"
     create = (
-        "from api.houses import HouseRepository, HouseCreate; "
+        "from king_county.house_records.repository import HouseRepository; "
+        "from king_county.house_records.schemas import HouseCreate; "
         "from pathlib import Path; "
         "r=HouseRepository(Path('/var/lib/king-county/houses.sqlite3')); "
         "r.initialize(); "
         "r.create(HouseCreate(bedrooms=3,bathrooms=1,sqft_living=100,grade=7,zipcode='98101'))"
     )
     read = (
-        "from api.houses import HouseRepository; from pathlib import Path; "
+        "from king_county.house_records.repository import HouseRepository; from pathlib import Path; "
         "print(HouseRepository(Path('/var/lib/king-county/houses.sqlite3')).get(1).zipcode)"
     )
     docker("volume", "create", volume)

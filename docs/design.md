@@ -63,7 +63,7 @@ Cell numbers below count **all cells, including Markdown**, starting at 1. `In[.
 | Notebook training — stays in the notebook | **Data Preparation**, cell 29; **Modeling**, cells 79–83; **Regularization and Hyperparameter Tuning**, cells 118–121; **Save the Model**, cell 132. | Import our preprocessing classes, then apply training-row rules, split, fit/tune, evaluate, and save the complete pipeline. Do not turn these steps into an application service. |
 | `PredictionService` | **Regularization and Hyperparameter Tuning**, cell 124 (`In[73]`) calls `elastic.predict(X_test_poly)`. | Reuse that prediction operation with the complete saved preprocessing pipeline. Startup loading and HTTP requests are new application code, not existing notebook steps. |
 | Pydantic models | No corresponding notebook implementation. **Business Understanding**, cell 5, describes dataset fields. | New validation around incoming house JSON, settings, and outgoing results. |
-| FastAPI routes | No corresponding notebook implementation. | Implemented prediction API boundary; the course's optional CRUD example is not included in this repository. |
+| FastAPI routes | No corresponding notebook implementation. | Prediction and five-field house CRUD boundaries. Storage and validation live outside the HTTP route module. |
 
 The notebook creates waterfront references before splitting. Moving reference fitting inside the training pipeline is a deliberate change, explained in section 3; the table maps responsibilities, not an identical execution order.
 
@@ -219,11 +219,16 @@ Keep invalid-request validation in the API tests. Container tests focus on packa
 
 Build reference: [uv's Docker integration guide](https://docs.astral.sh/uv/guides/integration/docker/).
 
-## 5. Stage 2 without premature scaffolding
+## 5. House storage boundary
 
 House CRUD is a separate feature: API routes → a house storage component → database. It should not be added inside `PredictionService`.
 
-The application already has a short `TODO(stage-2)` at its route-registration boundary for house CRUD and persistence. Track it in [the deferred tasks](../tasks.md#stage-2--deferred). No empty repository classes or database container are needed now. This separation reduces future rework; it does not guarantee zero refactoring.
+`src/api/houses.py` contains HTTP routing only. The Pydantic records in
+`king_county/house_records/schemas.py` and SQLite repository in
+`king_county/house_records/repository.py` do not depend on FastAPI. The app initializes
+the repository during startup and injects it into the routes. Tests mirror the
+same split. See [house storage](house-crud.md) for the unchanged five-field
+contract and persistence behaviour.
 
 ## 6. Review and delivery
 
