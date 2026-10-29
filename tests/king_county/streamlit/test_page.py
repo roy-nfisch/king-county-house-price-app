@@ -17,9 +17,6 @@ from king_county.streamlit import page as ui
 pytestmark = pytest.mark.integration
 APP = ui.ROOT / "src/king_county/streamlit/app.py"
 
-# Applies to the first render and later reruns on slower CI workers.
-APP_TIMEOUT_SECONDS = 30
-
 
 def test_valid_form_reuses_service_without_training(
     approved_artifact, monkeypatch, house_payload
@@ -29,7 +26,7 @@ def test_valid_form_reuses_service_without_training(
     expected = PredictionService(approved_artifact).predict(
         HouseInput.model_validate(house_payload)
     )
-    app = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    app = AppTest.from_file(str(APP)).run()
     with (
         patch.object(HouseCleaner, "fit", side_effect=AssertionError("No fit")),
         patch.object(HouseFeatureEngineer, "fit", side_effect=AssertionError("No fit")),
@@ -49,7 +46,7 @@ def test_valid_form_reuses_service_without_training(
 
 def test_invalid_form_does_not_load_model(monkeypatch):
     """Bad ZIP and incompatible areas give safe feedback before loading."""
-    app = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    app = AppTest.from_file(str(APP)).run()
     app.text_input[0].set_value("bad")
     next(widget for widget in app.number_input if widget.key == "sqft_above").set_value(
         2000.0
@@ -67,7 +64,7 @@ def test_invalid_form_does_not_load_model(monkeypatch):
 def test_missing_model_fails_safely_and_does_not_cache(tmp_path, monkeypatch):
     """Missing model paths and exceptions are not displayed or stored."""
     monkeypatch.setattr(ui, "MODEL_PATH", tmp_path / "secret-model")
-    app = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    app = AppTest.from_file(str(APP)).run()
     app.button[0].click().run()
     assert not app.exception
     assert "unavailable" in app.error[0].value
@@ -78,11 +75,11 @@ def test_missing_model_fails_safely_and_does_not_cache(tmp_path, monkeypatch):
 def test_sessions_do_not_share_a_cached_model(approved_artifact, monkeypatch, tmp_path):
     """A successful session cannot mask a missing model in a new session."""
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
-    first = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    first = AppTest.from_file(str(APP)).run()
     first.button[0].click().run()
     assert first.metric
     monkeypatch.setattr(ui, "MODEL_PATH", tmp_path / "missing")
-    second = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    second = AppTest.from_file(str(APP)).run()
     second.button[0].click().run()
     assert second.error
     assert not second.metric
@@ -93,7 +90,7 @@ def test_prediction_failure_is_safe(approved_artifact, monkeypatch):
     from king_county.prediction import PredictionError
 
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
-    app = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    app = AppTest.from_file(str(APP)).run()
     with patch.object(
         PredictionService, "predict", side_effect=PredictionError("secret")
     ):
@@ -107,7 +104,7 @@ def test_edited_fields_and_leading_zero_zip(
 ):
     """Edited numbers, coordinates, nullable values and ZIP reach the service."""
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
-    app = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    app = AppTest.from_file(str(APP)).run()
     app.text_input[0].set_value("01234")
     edited = {
         "bedrooms": 4,
@@ -142,7 +139,7 @@ def test_altered_model_fails_without_caching(approved_artifact, monkeypatch):
     """Modified bytes fail checksum verification without revealing the path."""
     approved_artifact.path.write_bytes(b"tampered")
     monkeypatch.setattr(ui, "MODEL_PATH", approved_artifact.path)
-    app = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    app = AppTest.from_file(str(APP)).run()
     app.button[0].click().run()
     assert not app.exception
     assert "verified" in app.error[0].value
@@ -157,7 +154,7 @@ def test_invalid_example_is_safe(tmp_path, monkeypatch, content):
     if content is not None:
         path.write_text(content, encoding="utf-8")
     monkeypatch.setattr(ui, "EXAMPLE_PATH", path)
-    app = AppTest.from_file(str(APP), default_timeout=APP_TIMEOUT_SECONDS).run()
+    app = AppTest.from_file(str(APP)).run()
     assert not app.exception
     assert "invalid" in app.error[0].value
     assert str(path) not in app.error[0].value

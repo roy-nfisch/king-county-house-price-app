@@ -56,10 +56,6 @@ Only non-Docker integration tests use two `pytest-xdist` workers.
 repeated. Unit, contract and Docker cases stay serial within their jobs.
 Use `-n 0` when debugging.
 
-CI limits numerical-library threads to one per worker to avoid competing thread
-pools. Streamlit test runs allow 30 seconds per render; package-import subprocesses
-allow 60 seconds for cold startup. These are failure limits, not added waits.
-
 Pushes and pull requests run checks; they do not publish images or deploy apps.
 
 ## Container integration checks

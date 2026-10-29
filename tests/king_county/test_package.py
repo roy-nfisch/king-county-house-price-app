@@ -9,9 +9,6 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
-# Cold imports on shared CI runners can take longer than local imports.
-IMPORT_TIMEOUT_SECONDS = 60
-
 
 @pytest.mark.parametrize(
     ("field", "expected"),
@@ -44,7 +41,7 @@ logging.getLogger("king_county").debug("Hidden debug message")
         env=environment,
         capture_output=True,
         text=True,
-        timeout=IMPORT_TIMEOUT_SECONDS,
+        timeout=15,
         check=True,
     )
 
@@ -67,7 +64,7 @@ def test_api_package_imports_outside_repository(tmp_path):
         env=environment,
         capture_output=True,
         text=True,
-        timeout=IMPORT_TIMEOUT_SECONDS,
+        timeout=15,
         check=True,
     )
     assert result.stdout.strip() == "api.main"
