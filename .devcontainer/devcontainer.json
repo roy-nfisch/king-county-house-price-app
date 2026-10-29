@@ -1,0 +1,9 @@
+{
+  "name": "King County API",
+  "build": { "dockerfile": "Dockerfile" },
+  "postCreateCommand": "uv sync --locked",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "King County API", "onAutoForward": "silent" }
+  }
+}
