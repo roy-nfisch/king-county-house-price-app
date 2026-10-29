@@ -98,7 +98,7 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Inspect the approved artifact (about 72 KB): its SHA-256 matches the code pin, the verified loader accepts only the expected custom types, and fitted state includes 105 waterfront coordinate pairs. Keep versioned exports under `model/versions/`; allow only the approved version's `pipeline.skops` in `.gitignore`. Keep legacy/experimental models and sidecars ignored. Document why one model belongs with the runnable demo; keep it outside the image.
     - [x] Review, pass CI, and merge PRs #9 and #10. The dataset/model redistribution check remains open under T13, not silently approved by this technical completion.
 
-- [x] **T11a — Publish the Docker image to a registry.** First approved publication passed from `main` (`f213617`), tag `2026.10.29`, with commit and `latest` tags. Both workflow jobs passed. The package is now private; no API was deployed.
+- [x] **T11a — Publish the Docker image to a registry.** First approved publication passed from `main` (`f213617`), tag `2026.10.29`, with commit and `latest` tags. Both workflow jobs passed. The package was initially kept private; T13 records its corrected public release. No API was deployed.
     - [x] Prepare a main-only manual workflow with `YYYY.MM.DD[.N]` version tags, commit tags, and `latest` updated only after post-publish health/prediction checks. Validate real calendar dates, transfer the tested image, pin actions, and limit package-write permission to the publishing job. Use `GITHUB_TOKEN`; keep the model out of the image. Do not change registry visibility automatically.
     - [x] Document manual execution, default private package visibility, digest-based pulling, model mounting, amd64 architecture, and failure/cleanup behavior.
     - [x] Reject existing version tags before any push; fail closed on registry/authentication/network errors. Bound smoke-check HTTP requests and add offline regression tests for registry responses, workflow ordering, and timeout failures. Only `latest` intentionally moves between releases; commit tags identify the source revision.
@@ -112,17 +112,18 @@ Keep the original notebook, saved model, and CSV unchanged as reference material
     - [x] Add private registry login, exact digest pull, read-only model mount, localhost port, example prediction, troubleshooting, and stop instructions.
     - [x] Review the walkthrough from an isolated checkout: locked installation, package build, and 457 tests passed; six Docker checks skipped without a selected image. The first publishing workflow verified its image; local private pulling still needs authorised package credentials. Public-image readiness is tracked separately below.
 
-## In progress
-
-- [ ] **T13 — Final review and public repository check.** Started on `feature/final-review` from merged `main`. Keep the implementation simple and OOD first; do not commit. Findings and evidence are in `docs/final-review.md`.
+- [x] **T13 — Final review and public runtime release.** Review and license fix merged in PR #14. Corrected image `2026.10.29.1` is public and anonymous pulls passed. Release documentation is on `docs/public-image-release`, uncommitted for review. Engineering review and runtime delivery are complete; dataset/model redistribution remains a separate unresolved follow-up below. Evidence is in `docs/final-review.md`.
     - [x] Run an independent read-only audit with GPT-6 Astra (high), different from implementer GPT-6.1 Sol. No application correctness/OOD redesign needed; record concrete packaging and documentation findings.
     - [x] Check an isolated clone, merged-main CI, tracked/generated files, and common credential signatures across the tracked tree and 43 locally reachable commits. Targeted checks found no matches; do not claim a comprehensive security scan.
     - [x] Fix missing MIT notice in package/image inputs, add metadata/runtime regressions, and correct stale Docker/app wording. Preserve original notebook, CSV, and approved model.
     - [x] Verify local fixes: all 466 tests pass with the corrected local image, including seven Docker integration cases; three existing notebook warnings remain. Lint, formatting, package build, Compose, documentation links/shell syntax, and diff checks pass. Independent reviewer rechecked the delta and four package tests; no remaining defect found in those changes.
-    - [ ] Review before any commit; new branch CI awaits an authorised push. Dataset/model redistribution and the public-image hand-off remain open.
-    - [ ] After review/merge, publish a corrected image version and verify it. GHCR visibility is package-wide: get explicit approval to remove the old deficient version, or choose a separate corrected public package. Keep the current image private until resolved; no silent deletion/tag overwrite.
-    - [ ] Once approved for public access, change visibility, verify anonymous digest pulling and image checks, and update README/badge/no-login run instructions. Do not deploy the API.
-    - [ ] Before public release, confirm redistribution permission for the course dataset and the model's retained waterfront coordinates. The MIT software license alone does not establish the dataset's licensing; no separate dataset source/license notice was found. Do not treat technical checksum approval as redistribution clearance.
+    - [x] Merge the reviewed fixes and PDF in PR #14. Merged-main CI passed at `563785d`; follow-up Terra audit found only stale status wording, corrected in the release documentation.
+    - [x] Publish corrected `2026.10.29.1` in run 40792312600. All 466 tests and post-publish verification passed. Remove old version `2026.10.29` and its two associated manifests with explicit approval; preserve the corrected version and its manifests. No old tag was overwritten; `latest` was intentionally promoted.
+    - [x] Confirm public visibility, pull version/latest/digest with an empty Docker credential folder, check the installed MIT notice, and verify all old references are unavailable. Update README/badge/no-login instructions. No API was deployed; only a temporary Python-only container checked the license locally.
+
+## Open provenance follow-up
+
+- [ ] Confirm redistribution permission for the course dataset and the model's retained waterfront coordinates. The MIT software license alone does not establish the dataset's licensing; no separate dataset source/license notice was found. These files already exist in the repository but stay outside the public image. Do not treat technical checksum approval or completion of the engineering work as redistribution clearance.
 
 ## Stage 2 — Deferred
 
