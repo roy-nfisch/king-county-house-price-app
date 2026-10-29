@@ -34,7 +34,7 @@ sqft_lot15, last_known_change, center_distance, water_distance
 
 It does not contain the earlier cleaning or waterfront reference-building steps. Loading this legacy file alone will not turn raw house details into a prediction. It remains a reference; the API uses the complete refactored pipeline exported by the working notebook instead.
 
-The repository includes one approved versioned `pipeline.skops` (about 72 KB), containing the complete refactored pipeline. Other exports and the legacy `model.bin` stay ignored. A fresh clone can use that approved file without retraining. Loading a different export requires deliberate code approval; a missing or changed model stops API startup. The Docker image excludes the model and loads it from a read-only mount. See the [README](../README.md#exported-files) for artifact and redistribution limitations.
+The repository includes one approved versioned `pipeline.skops` (about 72 KB), containing the complete refactored pipeline. Other exports and the legacy `model.bin` stay ignored. A fresh clone can use that approved file without retraining. Loading a different export requires deliberate code approval; a missing or changed model stops API startup. The Docker image excludes the model and loads it from a read-only mount. See the [artifact reference](api-and-model.md#exported-files) for artifact and redistribution limitations.
 
 ## 2. The proposed pattern: small objects working together
 

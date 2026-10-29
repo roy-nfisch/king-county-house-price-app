@@ -3,356 +3,94 @@
 [![CI on main](https://github.com/roy-nfisch/mle-refactoring-project/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/roy-nfisch/mle-refactoring-project/actions/workflows/ci.yml?query=branch%3Amain)
 [![Tests: unit, integration, contract](https://img.shields.io/badge/tests-unit%20%7C%20integration%20%7C%20contract-blue)](#test-categories-and-ci-stages)
 [![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](#run-locally)
+[![Streamlit: local app](https://img.shields.io/badge/Streamlit-local%20app-FF4B4B?logo=streamlit&logoColor=white)](#run-locally)
 [![Docker: local](https://img.shields.io/badge/Docker-local-2496ED?logo=docker&logoColor=white)](#run-with-docker-compose)
 [![GHCR: public image](https://img.shields.io/badge/GHCR-public%20image-blue)](#run-the-published-image)
 
-We refactored a house-price notebook into a small, object-oriented Python package and a working prediction API. Preprocessing is reusable and tested; training stays in the notebook, not in a training service. See [how we moved from notebook to app](docs/notebook-to-app.md).
+We turned a house-price notebook into a small, object-oriented Python package,
+a prediction API and a local app. Our focus was making the notebook's behaviour
+reusable, testable and easy for someone else to run.
 
-This is a portfolio project developed during the neue fische MLE course. It builds on the supplied King County notebook and dataset, with our own Python package, validation, tests, and CI.
+This portfolio project was developed during the neue fische MLE course. The
+course supplied the King County notebook, dataset and modelling starting point.
+We built the Python application, validation, tests and delivery workflow around it.
 
-For a quick overview, view the [five-slide refactoring summary (PDF)](docs/project-overview.pdf): object responsibilities, behaviour-preserving changes, testing, and delivery challenges. The slides record the final review before public image release; current release instructions are below.
+[Try the app](#run-locally) · [Technology choices](#technologies-and-why-we-used-them) · [Architecture](#the-flow) · [Tests](#run-the-checks)
 
-## What works today
+<img src="docs/images/streamlit-app.jpg" alt="Local house-price app with grouped inputs and readable labels" width="800">
 
-- **Reusable preprocessing:** `HouseCleaner` and `HouseFeatureEngineer` run together in a scikit-learn pipeline.
-- **Clear responsibilities:** validation checks inputs; the cleaner transforms them; the feature object calculates distances and returns 19 ordered model inputs.
-- **Stored reference data:** fitting remembers training waterfront coordinates. Transforming new houses reuses those coordinates without fitting again.
-- **Notebook training and export:** raw-data splitting, training-only grid search, held-out evaluation, and a complete saved pipeline with metadata and checksum.
-- **Reload verification:** a fresh Python process reproduces predictions using only the exported bundle and installed package, without the training CSV.
-- **Prediction API:** FastAPI validates the 17 raw inputs and calls the shared `PredictionService`; the verified model loads once at startup.
-- **Regression tests:** controlled examples check that the refactor preserves the original preprocessing results.
-- **Development checks:** pytest, Ruff, and a package build run in GitHub Actions.
-- **Local Docker:** a non-root API image and Compose setup load the approved model from a read-only mount; container smoke checks have a separate CI job.
-- **Local Streamlit UI:** grouped house inputs, friendly labels and a price card reuse the same validated prediction service. No API call or training is needed.
+*The local Streamlit app uses the saved model. No API server or retraining is needed.*
 
-**Published:** a verified public GHCR image, tagged `2026.10.29.1` and `latest`, downloadable without logging in. [Run the published image](#run-the-published-image) with the approved model mounted read-only. Publishing did not deploy the API. That image predates authentication; do not expose it publicly. See [private Codespaces development](docs/codespaces.md) and [tasks.md](tasks.md).
+## What we built
 
-## The flow
+- **Reusable preprocessing:** small `HouseCleaner` and `HouseFeatureEngineer`
+  objects compose a scikit-learn pipeline, with tests against the original notebook.
+- **Shared prediction:** FastAPI and Streamlit use the same Pydantic input
+  contract, verified model loader and `PredictionService`.
+- **Separate house storage:** five-field CRUD uses SQLite without coupling
+  stored records to the model's 17-field prediction input.
+- **Tested delivery:** unit, integration and API contract tests run in CI.
+  Docker packages the API; a private Codespace was used to verify it remotely.
 
-```mermaid
-flowchart LR
-    A[Raw house data] --> S[Train/test split]
-    S --> B[HouseCleaner]
-    B --> C[HouseFeatureEngineer]
-    C --> D[19 ordered features]
-    D --> M[Polynomial expansion, scaling and ElasticNet]
-    M --> E[Evaluate and save complete pipeline]
-```
-
-Training, evaluation, and model saving stay in the notebook. The application loads the saved pipeline and predicts; it does not run the notebook or retrain during requests.
-
-The notebook first fits preprocessing on all retained rows **only for the original-baseline comparison**. Its separate modelling section splits raw inputs first and fits a fresh complete pipeline inside each training fold. The evaluation never reuses the full-data baseline object.
+Training, evaluation and model export stay in the notebook, not in a training
+service. For the journey and challenges, read the [notebook-to-app walkthrough](docs/notebook-to-app.md)
+or view the [five-slide summary (PDF)](docs/project-overview.pdf).
 
 ## Run locally
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.5 or newer. The project uses Python 3.13.17 or a newer 3.13 patch release.
+Use Python 3.13.17 or a newer 3.13 patch and
+[uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.5 or newer.
+From a fresh clone:
 
 ```bash
 git clone https://github.com/roy-nfisch/mle-refactoring-project.git
 cd mle-refactoring-project
-uv sync --locked
-```
-
-Open [King-County-refactored.ipynb](King-County-refactored.ipynb) in your notebook editor, select the project's `.venv` kernel, and run it from the project root. It reads the bundled CSV, checks preprocessing, then trains and evaluates the complete pipeline. Review the results before running the export cells; they create a new ignored local bundle and never overwrite the original model.
-
-For the original EDA and modelling workflow, see [King-County.ipynb](King-County.ipynb).
-
-### Run the optional Streamlit UI
-
-From the project root, install the UI extra and start the local app:
-
-```bash
 uv sync --locked --extra ui
 uv run --locked --extra ui streamlit run src/king_county/streamlit/app.py --server.address 127.0.0.1
 ```
 
-The form starts with [examples/house.json](examples/house.json), validates all
-17 fields and calls the same verified prediction service as the API. It does
-not train or call the API. See [the UI notes](docs/streamlit-ui.md) for model
-availability, input limits and deployment prerequisites.
+Open [localhost:8501](http://127.0.0.1:8501), keep the supplied example and select
+**Estimate price**. The approved model returns approximately **$323,409.49 USD**,
+with its model version. Try changing a field to see validation and prediction
+in action. Stop the server with Ctrl+C.
 
-### Use the preprocessing package
+The checkout includes one approved model, so running the app does not require
+training or an API key. See the [UI guide](docs/streamlit-ui.md) for input rules,
+model requirements and private Codespaces access.
 
-```python
-import pandas as pd
-from sklearn.pipeline import Pipeline
+### Run the prediction API
 
-from king_county.cleaning import HouseCleaner
-from king_county.features import HouseFeatureEngineer
-
-training_houses = pd.read_csv("data/King_County_House_prices_dataset.csv")
-preprocessor = Pipeline([
-    ("cleaning", HouseCleaner()),
-    ("features", HouseFeatureEngineer()),
-])
-# In model evaluation, pass only the training split here.
-prepared = preprocessor.fit_transform(training_houses)
-print(prepared.shape)
-```
-
-Use `preprocessor.transform(new_houses)` afterwards to reuse the fitted references. The training input must contain at least one waterfront house. Invalid or missing required inputs raise an error rather than receiving guessed values.
-
-## Run the checks
-
-```bash
-uv run --locked ruff check .
-uv run --locked ruff format --check .
-uv run --locked pytest tests/
-uv build
-```
-
-### Test categories and CI stages
-
-Tests keep their source-mirroring folders. Pytest markers map each test to one purpose:
-
-| Category | Tests mapped here | Run locally |
-|---|---|---|
-| Unit | Cleaning, features, validation, Pydantic schemas, settings, logging, isolated trace/middleware checks, and mocked Docker-helper regressions | `uv run --locked pytest -m unit` |
-| Integration | Scikit-learn pipeline wiring, artifact loading, prediction service with a fitted artifact, installed-package subprocesses, notebooks, API routes/traces, real containers, and Compose configuration | `uv run --locked pytest -m "integration and not docker" -n 2 --dist loadfile` |
-| Contract | Independently pinned public API request, response, and error expectations in `tests/api/test_contract.py` | `uv run --locked pytest -m contract` |
-
-Whole files use `pytestmark = pytest.mark.unit` (or `integration`/`contract`); mixed files mark individual tests with `@pytest.mark.unit`, for example. Every test must have exactly one category; collection fails for missing/overlapping categories or unknown marker names. `docker` is an additional runtime label, not a fourth category: real Docker/Compose tests are marked both `integration` and `docker`. Mocked Docker-helper checks remain unit tests.
-
-CI runs lint/format/build first. Unit, non-Docker integration, and contract jobs then run on `ubuntu-slim`, alongside the Docker integration job on `ubuntu-26.04`. The explicit Docker runner label selects Ubuntu 26.04 directly instead of following future OS migrations of `ubuntu-latest`; it does not freeze runner tool updates. Selections do not overlap, so each test runs once across these test jobs. All jobs must pass before merging; GitHub branch-protection settings are managed separately.
-
-The development-only `pytest-xdist` plugin runs non-Docker integration tests with two worker processes. `--dist loadfile` keeps each file on one worker, so the notebook's module-scoped export fixture is not repeated across workers. Unit and contract cases remain serial within their own jobs: worker startup did not improve the measured unit run, and the contract checks share one file. Docker cases also remain serial within their job to keep resource use predictable. Use `-n 0` to debug an integration test without workers. Worker counts are explicit rather than automatically consuming every available CPU. See the [pytest-xdist distribution guide](https://pytest-xdist.readthedocs.io/en/stable/distribution.html).
-
-Tests mirror the source packages: `src/king_county/` → `tests/king_county/` and `src/api/` → `tests/api/`. Notebook regression tests live in `tests/notebooks/`; dataset/model fixtures stay at the test root, and API client setup lives in `tests/api/conftest.py`. Container smoke tests live in `tests/docker/` and skip unless `DOCKER_TEST_IMAGE` names a built image. `tests/workflows/` covers release checks offline: mocked registry checks are unit tests, and the smoke-check shell with Docker/curl stand-ins is integration tested. These tests never log in or publish.
-
-UI tests in `tests/king_county/streamlit/` require `uv run --locked --extra ui pytest`; they
-explicitly skip when the extra is absent. CI installs the extra for category
-test jobs; the API Docker image remains independent of it.
-
-CI runs these stages on pushes and pull requests. Export integration tests fit a tiny controlled model in temporary storage; CI does not run the full training grid, publish, deploy, or need API keys or a pre-existing model artifact.
-
-### What the integration tests connect
-
-| Check | What it protects |
-|---|---|
-| Notebook training/export → verified loader → API prediction | The API reproduces held-out predictions from the notebook's small ElasticNet test run, not only a dummy model. |
-| Reordered JSON fields → ordered model features | Sending the same house fields in a different order does not change the result. |
-| Startup and prediction with fitting/CSV reads blocked | The exported model is enough; serving a prediction must not retrain or reopen the dataset. |
-| Truncated, altered, or replaced model archives → checksum rejection | Unapproved bytes never reach type inspection or deserialisation. |
-| Invalid house JSON or unusable model output → HTTP error | Validation and failure handling work across the API/service boundary. |
-
-These tests reuse the supplied CSV and temporary artifacts. Only the test export's checksum is approved in memory for that test; production approval constants are unchanged. The checks establish that the parts work together, **not** that a model is accurate on future house sales.
-
-### API contract tests
-
-`tests/api/test_contract.py` pins the public agreement: the 17 required request fields, their JSON types and nullability, the prediction response fields/types, and the safe validation-error format. Expectations are written independently of the application schemas so an accidental breaking change fails CI. Intentional API changes require reviewing these expectations, not automatically regenerating them. These checks protect API clients; they do not measure prediction accuracy or replace the existing boundary tests. API tests share the real app/client fixture in `tests/api/conftest.py` and reuse the temporary approved model.
-
-## Repository layout
-
-```text
-mle-refactoring-project/
-├── .github/workflows/ci.yml       # Automated development checks
-├── .github/workflows/publish-image.yml # Manual GHCR publishing after image tests
-├── .github/scripts/check_image_version.py # Reject reused tags and registry errors
-├── Dockerfile                    # Locked installation and non-root API runtime
-├── .dockerignore                 # Exclude models, data, notebooks and secrets
-├── compose.yaml                  # Local API and read-only model mount
-├── src/api/
-│   ├── __init__.py
-│   ├── errors.py                 # Safe 422 errors without raw input values
-│   ├── houses.py                 # HTTP routes for house CRUD
-│   ├── main.py                   # App factory and one-time startup loading
-│   ├── request_validation.py     # Reject duplicate JSON keys before prediction
-│   ├── routes.py                 # Predict, readiness and error responses
-│   ├── auth.py                   # Optional bearer authentication
-│   ├── settings.py               # Model, logging and authentication configuration
-│   └── traceability.py           # Request identity, timing and metadata logging
-├── src/king_county/
-│   ├── __init__.py
-│   ├── artifacts.py              # Code-pinned checksum and verified loader
-│   ├── cleaning.py               # Copy-first cleaning rules
-│   ├── features.py               # Fitted distances and ordered features
-│   ├── house_records/
-│   │   ├── __init__.py
-│   │   ├── schemas.py            # Five-field create, update and output models
-│   │   └── repository.py         # SQLite house storage without HTTP dependencies
-│   ├── prediction.py             # Shared prediction service; no training
-│   ├── schemas.py                # Pydantic house and price contracts
-│   ├── streamlit/
-│   │   ├── __init__.py           # Optional UI package
-│   │   ├── app.py                # Streamlit entry point
-│   │   ├── form.py               # Grouped inputs and raw field collection
-│   │   └── page.py               # Validation, session service and price card
-│   ├── validation.py             # Cleaning and feature input checks
-│   ├── settings.py               # Pydantic logging settings
-│   └── logging_config.py         # Console logging setup
-├── tests/
-│   ├── conftest.py               # Shared fixtures from the existing CSV
-│   ├── king_county/              # Tests matching the Python package
-│   │   ├── streamlit/
-│   │   │   ├── test_form.py      # Layout, field keys and coordinate precision
-│   │   │   └── test_page.py      # Prediction, session and safe-error integration
-│   │   └── house_records/
-│   │       ├── conftest.py       # Shared sample house fields
-│   │       ├── test_schemas.py   # Unit checks for house validation
-│   │       └── test_repository.py # Direct SQLite persistence checks
-│   ├── api/                      # Shared client, API contracts, HTTP and settings
-│   │   ├── conftest.py           # Shared API client with a temporary approved model
-│   │   ├── test_auth.py          # Bearer and cloud configuration checks
-│   │   ├── test_contract.py      # Public request, response and error contracts
-│   │   ├── test_houses.py        # House HTTP contracts, errors and app lifecycle
-│   │   ├── test_main.py          # Local/cloud application factory integration
-│   │   ├── test_routes.py        # Startup, prediction and HTTP failure handling
-│   │   ├── test_settings.py      # API configuration and environment checks
-│   │   └── test_traceability.py  # Request IDs, trace metadata and privacy
-│   ├── notebooks/                # Regression, training boundaries and export/reload
-│   ├── docker/test_container.py   # Container lifecycle, health, HTTP and Compose checks
-│   ├── workflows/                # Offline registry checks and smoke-check failures
-│   └── fixtures/                 # Fixed expectations, not a duplicate CSV
-├── docs/
-│   ├── codespaces.md             # Private cloud development, diagram and checks
-│   ├── project-overview.pdf       # Five-slide project, learning and challenges summary
-│   ├── house-crud.md              # House storage contract and persistence
-│   ├── final-review.md            # Independent audit, fixes and release caveats
-│   ├── notebook-to-app.md         # Project journey, decisions, checks and limitations
-│   ├── design.md                 # Class responsibilities and planned app
-│   ├── notebook-baseline.md      # Original rules and comparison details
-│   └── streamlit-ui.md           # Local UI and deployment prerequisites
-├── data/King_County_House_prices_dataset.csv
-├── model/versions/king-county-20261028T153712021211Z/
-│   └── pipeline.skops            # Single checksum-approved inference pipeline
-├── assets/                       # Notebook images
-├── examples/house.json           # Feature-only record from the supplied CSV
-├── .devcontainer/                # Private Codespaces development environment
-├── King-County.ipynb              # Original EDA and modelling reference
-├── King-County-refactored.ipynb    # Preprocessing, training, evaluation and export
-├── pyproject.toml                # Dependencies and development configuration
-├── uv.lock                       # Locked dependencies
-├── .python-version
-├── .gitignore
-├── project-description.md        # Course assignment for context
-├── tasks.md                      # Progress and next steps
-├── README.md
-└── LICENSE
-```
-
-Only the versioned `pipeline.skops` shown above is allowed by `.gitignore`; the original `model.bin`, other exports, metadata, and reload examples stay ignored. Generated files, virtual environments, and local course references are also excluded.
-
-## Prediction inputs and limitations
-
-The model uses **19 prepared features**. The API accepts **17 raw fields** and derives basement area, the construction/renovation field, and distances. Missing information produces a validation error; supporting fewer fields would require a separately trained and evaluated model. See [the input design](docs/design.md#what-if-we-do-not-have-all-the-inputs).
-
-The data covers **2014–2015**. This is an educational project, not a current property valuation service. The verified refactored run on 28 October 2026 achieved held-out **R² 0.8447**, **MAE $94,808**, and **RMSE $143,443**, using 15,117 training and 6,479 test rows. These are measured results on one shuffled split, not percentage accuracy or proof of performance on future sales. Repeated house IDs can cross the split. Regression tests establish preprocessing compatibility, while this separate evaluation measures prediction quality.
-
-### Exported files
-
-The notebook saves `pipeline.skops`, `metadata.json`, and `reload-example.json` under a new timestamped `model/versions/king-county-…/` directory. Metadata records the input contract, metrics, data checksum, versions, and model SHA-256. The reload example contains three held-out feature-only records and their expected predictions. New exports remain local and ignored unless deliberately approved; rerunning export with the same directory fails rather than overwriting it.
-
-**Why include one trained model?** The `pipeline.skops` file (about 72 KB) lets a fresh clone run the API and Docker demo without retraining or requesting a separate model download. It contains preprocessing and the fitted estimator, not just prediction weights. The original `model.bin` is a reference artifact and is not used by the API. Keeping one approved version also makes the demo reproducible; an arbitrary new export is not automatically trusted.
-
-**Artifact review:** the approved file matches the SHA-256 pinned in `src/king_county/artifacts.py` and loads with only the two expected custom transformer types. It retains 105 training waterfront coordinate pairs, scaling statistics, and fitted model parameters; it is not anonymised or free of training-derived data. No credential-like fields were found in the archive schema, but that inspection is not a comprehensive security certification. Before public release, confirm permission to redistribute the course dataset and its retained coordinates: the repository has an MIT software license, but no separate dataset source/license notice was found. This remains an open release check in `tasks.md`.
-
-The notebook's fresh-process check verifies the bytes and permits only the two named custom transformer types. It checks serialization, not model quality or release approval. See [the export reference](docs/notebook-baseline.md#model-training-and-export) for details.
-
-The model loader verifies the code-pinned SHA-256 before loading the same bytes and permits only the two named custom transformer types. This checks artifact integrity, not model quality or the safety of an untrusted file. It does not trust a colocated metadata checksum.
-
-## Run the prediction API
-
-Use the approved versioned artifact listed above. From the project root:
+For the API alone, the optional UI dependency is not needed:
 
 ```bash
 uv sync --locked
 uv run --locked uvicorn api.main:create_app --factory --host 127.0.0.1 --port 7002
 ```
 
-Open [interactive docs](http://127.0.0.1:7002/docs) or send the dataset example:
+Open [interactive API docs](http://127.0.0.1:7002/docs). In another terminal,
+from the project root:
 
 ```bash
-curl http://127.0.0.1:7002/health
-curl -X POST http://127.0.0.1:7002/predict \
-  -H 'Content-Type: application/json' \
-  --data-binary @examples/house.json
+curl --fail http://127.0.0.1:7002/health
+curl --fail http://127.0.0.1:7002/predict \
+  -H 'Content-Type: application/json' --data-binary @examples/house.json
 ```
 
-The response contains `predicted_price`, `currency` (`USD`), and `model_version`. `/health` reports readiness after model loading, not prediction quality. Missing/invalid fields return **422**; model/output failures return **500**. Non-finite or non-positive prices fail explicitly rather than being clamped.
-
-ZIP codes must be five-digit strings; the service converts them to the model's numeric feature. Numeric fields reject strings and booleans. Years/counts are whole numbers, areas and coordinates are finite, and above-ground area cannot exceed living area. The keys `view`, `waterfront`, and `yr_renovated` are required but may be `null`, following the notebook's cleaning rules. There is no address lookup or guarantee that any in-range location is suitable for this historical model.
-
-Duplicate JSON keys return **422**, even when their values are identical or their names use equivalent Unicode escapes. Raw-body validation checks this before prediction, since normal dictionary parsing would silently keep only the last occurrence.
-
-Technical input limits also reject oversized numbers with **422** before prediction: counts and years must fit nonnegative int64 (`2**63 - 1` maximum), and measurements are capped at `2**53 - 1`, float64's consecutive-integer precision limit. The measurement cap is a conservative application policy that also keeps degree-two products finite—not a realistic house-size limit or a guarantee of accurate predictions. A model may still reject an otherwise valid request or produce an unusable price.
-
-### Supply or deliberately replace the model
-
-`src/king_county/artifacts.py` pins the reviewed model version, SHA-256, and default export path. `MODEL_PATH` can point to another location containing **the same approved bytes**; `LOG_LEVEL` controls logging. No `.env` file is loaded automatically, and no environment setting overrides the approved checksum.
-
-The approved artifact is intended to be versioned alongside the code so a fresh clone can start without training. To create a replacement, run the notebook, review its evaluation/export and redistribution suitability, then deliberately update `MODEL_VERSION`, `EXPECTED_MODEL_SHA256`, the exact `.gitignore` exception, and Compose's default model path together. A re-export may have a different checksum even with identical predictions. Never calculate and accept a new expected checksum automatically at startup. The model stays outside the Docker image and is mounted read-only at runtime.
+Prediction returns a price, currency and model version. The [API and model guide](docs/api-and-model.md)
+covers validation, artifact approval, configuration and request tracing.
+The [house CRUD guide](docs/house-crud.md) covers separate record storage.
 
 ### Run with Docker Compose
 
-From the project root, with Docker running and the approved local model available:
+With Docker running, use the same checkout and approved model:
 
 ```bash
 docker compose up --build --wait
-curl http://127.0.0.1:7003/health
-curl -X POST http://127.0.0.1:7003/predict \
-  -H 'Content-Type: application/json' --data-binary @examples/house.json
-docker compose logs api
-# Stop this project's container when finished:
-docker compose down
 ```
 
-Open [Docker API docs](http://127.0.0.1:7003/docs). Host port **7003** forwards to **8000 inside the container**; the API listens on all container interfaces, but Compose publishes it only on localhost. If 7003 is busy, use `API_PORT=7004 docker compose up --build --wait` and change the curl/browser port accordingly.
-
-The non-root runtime contains the installed package and locked runtime dependencies, not the CSV, notebooks, tests, model, or stored records. Compose mounts the approved artifact read-only at `/models/pipeline.skops` and keeps SQLite records in a named volume. No external database, training service, or API key is needed. The health check succeeds only after startup loads the model and initializes storage. A missing host file fails the mount; changed/unapproved bytes fail application startup. Check `docker compose logs api` if startup fails.
-
-To relocate the same approved model, set `MODEL_FILE=/absolute/path/pipeline.skops` before the Compose command. This changes only the host file location, **not** its trusted checksum. The default image command performs the usual code-pinned verification; no new checksum environment override is provided.
-
-To run container tests locally:
-
-```bash
-docker build -t king-county-api:test .
-DOCKER_TEST_IMAGE=king-county-api:test uv run --locked pytest tests/docker/
-```
-
-To run only the Docker-enabled integration stage used by CI, replace the last command with `DOCKER_TEST_IMAGE=king-county-api:test uv run --locked pytest -m "integration and docker"`. This excludes the helper unit tests, which already run in the unit stage.
-
-These tests reuse the existing temporary model fixture. The healthy test process explicitly approves that fixture's digest **in memory through a test-only Python startup command**; it does not change the image, production code, or normal entrypoint. Another test verifies that the normal command rejects this unapproved model.
-
-A small `DockerContainer` test helper owns creation and cleanup, including client timeouts and startup failures. Readiness requires Docker's actual health status; failures include both stdout and stderr. Checks also pin Compose's localhost port and read-only model mount with missing-file protection. Helper regression tests run without Docker; real-container and Compose checks require `DOCKER_TEST_IMAGE`. This checks packaging and HTTP wiring, not production model quality or deployment readiness.
-
-The Docker test file has 15 cases: seven helper regressions, five real-container checks (including named-volume persistence), and three Compose configuration checks. Invalid-request behaviour stays in the existing API tests instead of being repeated in Docker.
-
-### Publish to GitHub Container Registry
-
-The corrected [publication run](https://github.com/roy-nfisch/mle-refactoring-project/actions/runs/40792312600) passed from `main` at commit `563785d`. It published `2026.10.29.1`, `sha-563785d9d511184024db99b9490bdd05896c4711`, and `latest`. All 466 tests passed, including the complete MIT notice check in the container. Post-publish health, prediction, digest pull, and image identity checks also passed; no API was deployed. See the [image page](https://github.com/roy-nfisch/mle-refactoring-project/pkgs/container/mle-refactoring-project).
-
-For a future release, open **Actions → Publish API image → Run workflow**, select `main`, and enter a new version using `YYYY.MM.DD`. For another release on the same date, append `.1`, `.2`, etc. Dates must be real calendar dates with two-digit months/days, and an optional suffix must be a positive integer without leading zeros. Pushes and pull requests do not publish images, and a manual run from another branch is rejected.
-
-The workflow builds and tests the image, transfers that exact image between jobs, and checks its image ID before publishing. Only the publishing job has `packages: write`; authentication uses GitHub's short-lived `GITHUB_TOKEN`, not a personal token stored in this repository. The version is the image tag: `ghcr.io/roy-nfisch/mle-refactoring-project:2026.10.28` (or the selected date/suffix). It also publishes a `sha-<full-commit>` tag and updates `latest` only after post-publish health and prediction checks pass. `latest` means the last successfully verified manual publication, not necessarily the highest date tag. The workflow does not change package visibility. New GHCR packages default to private; review package access settings before sharing, even when the repository is public. See [GitHub's registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
-
-Before pushing, an authenticated registry check rejects an existing version tag. Only an explicit missing-manifest/name response permits publication; authentication, network, malformed-response, and other registry errors stop the job. Workflow runs are serialized, but this is not registry-enforced immutability: someone publishing outside this workflow could still change a tag.
-
-After pushing, it pulls by registry digest and checks health and prediction with the approved model mounted read-only. HTTP checks have a five-second connection timeout and a 15-second total timeout per request. The run summary records the digest reference. Publishing creates a downloadable image, not a hosted API. If post-push verification fails, the workflow fails but does not automatically delete already-pushed tags. Choose a new version for the next attempt rather than overwriting an existing tag.
-
-### Run the published image
-
-The corrected `2026.10.29.1` image includes the project's MIT notice and is
-publicly downloadable. The old `2026.10.29` version and its associated manifests
-were removed rather than overwritten. No GitHub account, token, or Docker login
-is needed to pull the public image.
-
-You need Docker running and a checkout of this repository with the approved model. No local Python install
-or model retraining is needed. Run these commands from the project root.
-
-**1. Pull and start the verified image.** This digest pins the exact corrected image;
-the `2026.10.29.1` and `latest` tags currently point to it. The image is Linux amd64,
-so an ARM Mac uses Docker's amd64 emulation. The model stays outside the image.
-
-```bash
-KING_COUNTY_IMAGE=ghcr.io/roy-nfisch/mle-refactoring-project@sha256:95bf5253cc3a7288651876e7abbcb70df933b7c3d16ce100d3421a9726ad672f
-docker pull --platform linux/amd64 "$KING_COUNTY_IMAGE"
-docker run --rm --platform linux/amd64 -p 127.0.0.1:7003:8000 \
-  --mount "type=bind,source=$(pwd)/model/versions/king-county-20261028T153712021211Z/pipeline.skops,target=/models/pipeline.skops,readonly" \
-  "$KING_COUNTY_IMAGE"
-```
-
-**2. Check it in another terminal**, also from the project root, once startup
-finishes. Keep the first terminal running. Open <http://127.0.0.1:7003/docs> or:
+Open [Docker API docs](http://127.0.0.1:7003/docs). Compose maps localhost port
+7003 to container port 8000, mounts the model read-only and persists house
+records in a named volume. From the project root, check it with:
 
 ```bash
 curl --fail http://127.0.0.1:7003/health
@@ -360,60 +98,147 @@ curl --fail http://127.0.0.1:7003/predict \
   -H 'Content-Type: application/json' --data-binary @examples/house.json
 ```
 
-Prediction returns `predicted_price`, `currency`, and `model_version`. Press
-Ctrl+C in the first terminal to stop; `--rm` removes that container. If port 7003
-is occupied, change only the host port (for example, `7004:8000`) and use that
-port in the URLs. A missing model or checksum mismatch stops startup; do not
-bypass the approval check. If stale saved GHCR credentials cause an authentication
-error, try pulling with an empty temporary Docker configuration instead of
-creating a token. Keep the repository/model files separate from that configuration.
+These requests go to the Docker API on port **7003**, not the Python API on
+port 7002. Stop with `docker compose down`; the volume is retained.
 
-The image contains no model or dataset. Their redistribution permissions remain
-an open provenance review item; public runtime publication does not establish
-permission to redistribute the data or the model's retained training coordinates.
+See [container instructions](docs/containers.md#run-with-docker-compose) for
+port conflicts, model paths and troubleshooting.
 
-### Prediction traceability
+### Run the published image
 
-Traceability helps us answer: **“What happened to this prediction request?”** Each call to `/predict` gets a unique ID and a short record in the server terminal—even when the input is rejected.
+A verified prediction API image is available publicly as `2026.10.29.1`
+and `latest`; no registry login is required. It is an earlier release:
+**it predates authentication and house CRUD and does not include Streamlit**.
+Publishing an image does not host an API.
 
-| Recorded field | What it tells us |
+Follow the [pinned-image run instructions](docs/containers.md#run-the-published-image)
+with the approved model mounted separately. Build from this checkout for the
+current API features. Keep either option localhost/private only.
+
+## Technologies and why we used them
+
+We kept the stack focused on reusable Python objects, fast feedback and a demo
+that someone else can run:
+
+| Technology | Why we used it here |
 |---|---|
-| `request_id` | Which request we are looking at. |
-| `timestamp` | When it started, in UTC. |
-| `model_version` | Which loaded model handled the request. |
-| `outcome` | Did it succeed, reject invalid input, or fail? |
-| `status_code` | Which HTTP status started the response, such as 200 or 422. |
-| `duration_ms` | How long the request took, in milliseconds. |
+| Python and Jupyter | Keep exploration, training and evaluation visible in the notebook, while moving reusable behaviour into small Python objects. |
+| pandas and NumPy | Work with house-data tables and numeric features, using the same tools as the original notebook so we can compare results directly. |
+| scikit-learn | Connect cleaning, fitted features, scaling and the notebook's ElasticNet model in one pipeline. New predictions reuse the training steps without fitting again. |
+| Pydantic | Make the input and output rules explicit. Invalid house data is rejected before it reaches the model, and both interfaces share the same contract. |
+| FastAPI and Uvicorn | Expose prediction and house-record operations through a documented HTTP API, while keeping business logic in reusable services. |
+| Streamlit | Give someone a way to try the model through a form without writing a separate frontend. It calls the same Python service as the API. |
+| SQLite | Store the five-field house records in a local database file. This keeps the CRUD example easy to run without a separate database server. |
+| skops and SHA-256 | Save and reload the complete fitted pipeline. A code-pinned checksum and custom-type allowlist ensure we load only the reviewed artifact. |
+| pytest and pytest-xdist | Check individual objects, component integration and API contracts. Separate CI jobs and selective parallel execution keep feedback fast. |
+| Ruff | Apply consistent formatting and catch common Python mistakes automatically, keeping code review focused on behaviour and design. |
+| uv and pyproject.toml | Define the package and install locked dependencies for local work and CI. Streamlit stays an optional extra, outside the API runtime dependencies. |
+| Docker and Docker Compose | Package the API runtime and run it with a read-only model mount and persistent house storage. The container runs as a non-root user. |
+| GitHub Actions and GHCR | Run checks on changes and publish versioned container images through a separate manual workflow. Publishing an image does not deploy the API. |
+| GitHub Codespaces | Verify the API in a private cloud development workspace, using the repository's dev-container configuration. It is a demo environment, not production hosting. |
 
-**Example:** someone reports a failed prediction. We take the `X-Request-ID` from their response headers and search the server logs for the same ID. This tells us which model was used, what happened, and how long it took. It does **not** tell us whether the predicted price was accurate.
+## The flow
 
-To see the response headers, add `-i` to the example request:
-
-```bash
-curl -i -X POST http://127.0.0.1:7002/predict \
-  -H 'Content-Type: application/json' \
-  --data-binary @examples/house.json
+```mermaid
+flowchart LR
+    UI[Streamlit form] --> V[Pydantic validation]
+    API[FastAPI] --> V
+    V --> S[PredictionService]
+    S --> P[Verified fitted pipeline]
+    P --> R[Price in USD and model version]
+    API --> H[Separate house-record routes]
+    H --> DB[SQLite]
 ```
 
-We log **no house details, predicted prices, or exception text** in these trace records. The app writes them to standard logging, not a dedicated file or database; your terminal or hosting platform may retain them. Keep `LOG_LEVEL=INFO` to see them. Health checks and documentation visits do not create prediction records.
+The two interfaces share prediction code; Streamlit does not call the API.
+Model verification happens when the service loads: once at API startup or once
+per UI session. CRUD records are separate from prediction.
 
-If processing is interrupted, the outcome is `failed` even if a 200 response had already started. No started response means `status_code` is `null`. Unexpected server errors may return a generic 500 without the request-ID header. See [the design notes](docs/design.md#a-lightweight-audit-not-another-platform) for technical details.
+The notebook handles **split → fit preprocessing and model → evaluate → export**.
+The application only transforms new inputs and predicts. See the
+[design and notebook mapping](docs/design.md) for object responsibilities.
 
-The source supports optional bearer authentication for HTTP routes except `/health`;
-cloud mode requires a token. See [private Codespaces development](docs/codespaces.md)
-for prerequisites and operating instructions. A private Codespace passed direct
-health and prediction checks both directly and through a private browser port,
-and was then stopped. This is a development workspace, not production hosting. Saving prediction
-results remains deferred. Keep the local prototype bound to `127.0.0.1`.
+## Results and limitations
+
+On one held-out shuffled split, the refactored model achieved **R² 0.8447**,
+**MAE $94,808** and **RMSE $143,443**. See the
+[evaluation record](docs/notebook-baseline.md#model-training-and-export) for
+the split, training settings and comparison.
+
+- The dataset covers **2014–2015**. This is an educational model, not a current
+  property valuation service. R² is not percentage accuracy, and repeated
+  property IDs can cross the split.
+- Both interfaces need all **17 raw fields** to create the **19 prepared
+  features**. There is no address lookup or hidden default for missing inputs.
+- The UI has no login; FastAPI's optional bearer protection does not protect it.
+  Keep the UI localhost/private. Codespaces is development hosting, not production.
+- Dataset/model redistribution permission remains an open follow-up. The MIT
+  software license and checksum approval do not establish those rights. The
+  model retains training-derived coordinates; see the [artifact reference](docs/api-and-model.md#exported-files).
+
+## Run the checks
+
+From the project root, include the UI extra so its tests do not skip:
+
+```bash
+uv sync --locked --extra ui
+uv run --locked --extra ui ruff check .
+uv run --locked --extra ui ruff format --check .
+uv run --locked --extra ui pytest -m "not docker" -n 2 --dist loadfile
+uv build
+```
+
+### Test categories and CI stages
+
+| Category | What it checks |
+|---|---|
+| Unit | Individual validators, preprocessing objects and configuration. |
+| Integration | Notebook export, verified loading, API/UI wiring and Docker runtime. |
+| Contract | Public request, response and error expectations for API consumers. |
+
+CI runs quality checks first, then separate test jobs. Only non-Docker integration
+tests use two workers; Docker has its own job. The latest local closeout run
+passed **560 non-Docker tests and eight Docker integration checks**. These checks
+protect behaviour and wiring, not accuracy on future sales.
+
+See [testing and CI](docs/testing.md) for category commands, fixtures, parallel
+execution and container checks. Publishing uses a [separate manual workflow](docs/containers.md#publish-to-github-container-registry).
+
+## Repository layout
+
+```text
+mle-refactoring-project/
+├── src/
+│   ├── king_county/
+│   │   ├── cleaning.py, features.py, validation.py
+│   │   ├── artifacts.py, prediction.py, schemas.py
+│   │   ├── house_records/       # Record schemas and SQLite repository
+│   │   └── streamlit/           # app.py, form.py and page.py
+│   └── api/                    # Factory, routes, auth and request tracing
+├── tests/                      # Mirrors source; also notebook, Docker and workflow checks
+├── docs/                       # Guides, diagrams, screenshot and five-slide PDF
+├── examples/house.json         # Feature-only example for the API and UI
+├── model/versions/             # One checksum-approved fitted pipeline
+├── data/                       # Supplied course dataset
+├── King-County.ipynb           # Original notebook reference
+├── King-County-refactored.ipynb # Training and export using our package
+├── .github/workflows/          # CI and manual image publishing
+├── .devcontainer/              # Private Codespaces workspace
+├── Dockerfile, compose.yaml
+└── pyproject.toml, uv.lock
+```
+
+The [detailed file tree](docs/repository-layout.md) explains individual files.
+Tests reuse the supplied data and temporary artifacts, not a duplicate dataset.
 
 ## Project notes
 
-- [Final review and project closeout](docs/final-review.md): course coverage, independent audits, verification, and remaining permission/release caveats.
-- [Notebook-to-app walkthrough](docs/notebook-to-app.md): what we changed, how the objects fit, and what we learned.
-- [Design and diagrams](docs/design.md): responsibilities, notebook mapping, and prediction flow.
-- [Baseline reference](docs/notebook-baseline.md): preserved rules and regression checks.
-- [Task list](tasks.md): completed work and next steps.
-- [Original assignment](project-description.md): the course requirements behind this project.
+- [Notebook-to-app walkthrough](docs/notebook-to-app.md): decisions, challenges and lessons.
+- [UI guide](docs/streamlit-ui.md): form inputs, model requirements and private access.
+- [Design](docs/design.md): object responsibilities and original notebook mapping.
+- [Baseline and export reference](docs/notebook-baseline.md): parity rules, evaluation and model export.
+- [Project review](docs/final-review.md): verification and remaining limitations.
+- [Task list](tasks.md) and [original assignment](project-description.md): scope and completion.
 
-The separate [house CRUD API](docs/house-crud.md) stores five fields in SQLite.
-These records are not prediction inputs: prediction still requires all 17 fields.
+To work through training, open `King-County-refactored.ipynb` with the project's
+`.venv` kernel. No notebook execution is required to try the app.
